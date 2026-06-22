@@ -1,13 +1,94 @@
+# =====================================================
+# micron_per.py
+# Micron 데이터 수집 모듈
+# =====================================================
+
 import yfinance as yf
 
-def get_micron_data():
-    ticker = "MU"
-    stock = yf.Ticker(ticker)
-    info = stock.info
 
-    return {
-        "name": "Micron",
-        "price": info.get("currentPrice"),
-        "eps": info.get("epsCurrentYear"),
-        "pe": info.get("trailingPE")
-    }
+def get_micron_data():
+    """
+    Micron Technology(MU) 데이터 수집
+
+    Returns:
+        dict
+    """
+
+    try:
+        ticker = yf.Ticker("MU")
+        info = ticker.info
+
+        price = (
+            info.get("currentPrice")
+            or info.get("regularMarketPrice")
+            or 0
+        )
+
+        pe = (
+            info.get("forwardPE")
+            or info.get("trailingPE")
+            or 0
+        )
+
+        eps = (
+            info.get("trailingEps")
+            or info.get("epsCurrentYear")
+            or 0
+        )
+
+        return {
+            "name": "Micron",
+            "ticker": "MU",
+
+            # 가격 지표
+            "price": float(price) if price else 0,
+
+            # 가치 지표
+            "pe": float(pe) if pe else 0,
+            "eps": float(eps) if eps else 0,
+
+            # 성장성 지표
+            "eps_growth": float(
+                info.get("earningsGrowth") or 0
+            ),
+
+            "revenue_growth": float(
+                info.get("revenueGrowth") or 0
+            ),
+
+            # 수익성 지표
+            "roe": float(
+                info.get("returnOnEquity") or 0
+            )
+        }
+
+    except Exception as e:
+
+        print(f"[ERROR] Micron Data Error : {e}")
+
+        return {
+            "name": "Micron",
+            "ticker": "MU",
+
+            "price": 0,
+            "pe": 0,
+            "eps": 0,
+
+            "eps_growth": 0,
+            "revenue_growth": 0,
+            "roe": 0
+        }
+
+
+# =====================================================
+# 단독 실행 테스트
+# =====================================================
+
+if __name__ == "__main__":
+
+    data = get_micron_data()
+
+    print("\n=== Micron Data ===\n")
+
+    for k, v in data.items():
+        print(f"{k}: {v}")
