@@ -1,6 +1,6 @@
 from micron_per import get_micron_data
 from samsung_per import get_samsung_data
-from skhynix_per import get_sk_hynix_data
+from skhynix_per import get_skhynix_data
 from analysis import make_analysis
 from telegram_sender import send_telegram
 
