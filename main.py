@@ -1,26 +1,27 @@
 def run():
-    raw_data = [
-        get_micron_data(),
-        get_samsung_data(),
-        get_sk_hynix_data()
-    ]
+    try:
+        raw_data = [
+            get_micron_data(),
+            get_samsung_data(),
+            get_sk_hynix_data()
+        ]
 
-    results = [make_analysis(d) for d in raw_data]
+        results = [make_analysis(d) for d in raw_data]
 
-    print("\n=== Semiconductor Analysis ===\n")
+        print("\n=== Semiconductor Analysis ===\n")
 
-    report = "=== Semiconductor Analysis ===\n\n"
+        report = "=== Semiconductor Analysis ===\n\n"
 
-    for r in results:
-        print(f"{r['name']}")
-        print(f"Price: {r['price']}")
-        print(f"EPS: {r['eps']}")
-        print(f"PER: {r['pe']}")
-        print(f"Fair Value: {r['fair_value']}")
-        print(f"Gap: {r['gap']}")
-        print("--------------------")
+        for r in results:
+            print(f"{r['name']}")
+            print(f"Price: {r['price']}")
+            print(f"EPS: {r['eps']}")
+            print(f"PER: {r['pe']}")
+            print(f"Fair Value: {r['fair_value']}")
+            print(f"Gap: {r['gap']}")
+            print("--------------------")
 
-        report += f"""
+            report += f"""
 {r['name']}
 Price: {r['price']}
 EPS: {r['eps']}
@@ -30,7 +31,11 @@ Gap: {r['gap']}
 --------------------
 """
 
-    return report
+        return report
+
+    except Exception as e:
+        print(f"[ERROR] run() failed: {e}")
+        return None
 
 
 if __name__ == "__main__":
@@ -39,4 +44,11 @@ if __name__ == "__main__":
 
     report = run()
 
-    send_telegram(report)
+    if report:
+        try:
+            send_telegram(report)
+            print("[SUCCESS] Telegram sent")
+        except Exception as e:
+            print(f"[ERROR] Telegram failed: {e}")
+    else:
+        print("[SKIP] No report generated")
