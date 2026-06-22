@@ -1,19 +1,15 @@
-from micron_per import get_micron_data
-from samsung_per import get_samsung_data
-from skhynix_per import get_skhynix_data
-from analysis import make_analysis
-
-
 def run():
     raw_data = [
         get_micron_data(),
         get_samsung_data(),
-        get_skhynix_data()
+        get_sk_hynix_data()
     ]
 
     results = [make_analysis(d) for d in raw_data]
 
     print("\n=== Semiconductor Analysis ===\n")
+
+    report = "=== Semiconductor Analysis ===\n\n"
 
     for r in results:
         print(f"{r['name']}")
@@ -22,8 +18,25 @@ def run():
         print(f"PER: {r['pe']}")
         print(f"Fair Value: {r['fair_value']}")
         print(f"Gap: {r['gap']}")
-        print("-----------------------")
+        print("--------------------")
+
+        report += f"""
+{r['name']}
+Price: {r['price']}
+EPS: {r['eps']}
+PER: {r['pe']}
+Fair Value: {r['fair_value']}
+Gap: {r['gap']}
+--------------------
+"""
+
+    return report
 
 
 if __name__ == "__main__":
-    run()
+
+    from telegram_sender import send_telegram
+
+    report = run()
+
+    send_telegram(report)
