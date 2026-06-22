@@ -198,6 +198,16 @@ def build_per_scenarios(
 
     return scenarios
 
+# =====================================================
+# Micron 대비 PER Gap
+# =====================================================
+
+def calc_per_gap(current_per, micron_per):
+
+    return (
+        micron_per / current_per - 1
+    ) * 100
+
 
 # =====================================================
 # 단독 테스트
