@@ -1,6 +1,7 @@
+```python
 # =====================================================
 # main.py
-# Semiconductor Quant Dashboard v4.0
+# Semiconductor PER Dashboard v5
 # =====================================================
 
 from micron_per import get_micron_data
@@ -10,122 +11,169 @@ from skhynix_per import get_skhynix_data
 from analysis import (
     make_analysis,
     build_quant_dataframe,
-    get_ranking,
-    build_scenario
+    build_per_scenarios
 )
 
 from telegram_sender import send_telegram
 
 
 # =====================================================
-# 리포트 생성
+# Report Builder
 # =====================================================
 
 def build_report():
 
     raw_data = [
-
         get_micron_data(),
         get_samsung_data(),
         get_skhynix_data()
-
     ]
 
-    # 개별 분석
     results = [
         make_analysis(d)
         for d in raw_data
     ]
 
-    # 퀀트 엔진
     df = build_quant_dataframe(results)
 
-    ranking = get_ranking(df)
+    micron = df[df["name"] == "Micron"].iloc[0]
 
-    scenarios = build_scenario(df)
+    micron_price = micron["price"]
+    micron_per = micron["pe"]
+    micron_eps = micron["eps"]
 
     report = ""
 
     # =================================================
-    # 1. 퀀트 스코어
+    # Micron
     # =================================================
-
-    report += "📊 반도체 퀀트 스코어\n"
-    report += "=" * 30 + "\n\n"
-
-    for _, row in df.iterrows():
-
-        report += (
-            f"{row['name']}\n"
-            f"Score : {row['final_score']:.3f}\n"
-            f"PER   : {row['pe']:.2f}\n"
-            f"ROE   : {row['roe']:.2f}\n\n"
-        )
-
-    # =================================================
-    # 2. 순위
-    # =================================================
-
-    report += "\n🏆 투자 순위\n"
-    report += "=" * 30 + "\n"
-
-    for idx, r in enumerate(ranking, start=1):
-
-        report += (
-            f"{idx}위 "
-            f"{r['name']} "
-            f"(Score {r['score']})\n"
-        )
-
-    # =================================================
-    # 3. Micron 시나리오
-    # =================================================
-
-    report += "\n\n📈 Micron PER 기준 시나리오\n"
-    report += "=" * 30 + "\n"
-
-    for s in scenarios:
-
-        report += (
-            f"\n{s['name']}\n"
-            f"현재 PER : {s['current_per']}\n"
-            f"Micron PER : {s['micron_per']}\n"
-            f"목표가 : {s['target_price']:,.0f}\n"
-            f"상승여력 : {s['upside']}%\n"
-        )
-
-    # =================================================
-    # 4. 최종 해석
-    # =================================================
-
-    top = ranking[0]
-
-    report += "\n\n🧠 최종 투자 해석\n"
-    report += "=" * 30 + "\n"
 
     report += (
-        f"현재 퀀트 모델 기준 "
-        f"최우수 종목은 "
-        f"{top['name']} 입니다.\n\n"
+        "=====================\n"
+        "Micron\n"
+        "=====================\n"
+        f"현재주가 : ${micron_price:,.1f}\n"
+        f"현재PER  : {micron_per:.2f}\n"
+        f"현재EPS  : {micron_eps:.1f}\n\n"
+    )
+
+    # =================================================
+    # Samsung
+    # =================================================
+
+    samsung = df[df["name"] == "Samsung"].iloc[0]
+
+    gap = (micron_per / samsung["pe"] - 1) * 100
+
+    report += (
+        "=====================\n"
+        "Samsung\n"
+        "=====================\n"
+        f"현재주가 : {samsung['price']:,.0f}\n"
+        f"현재PER  : {samsung['pe']:.2f}\n"
+        f"현재EPS  : {samsung['eps']:,.1f}\n"
+        f"MicronPER: {micron_per:.2f}\n"
+        f"PER Gap  : {gap:.1f}%\n\n"
+    )
+
+    # =================================================
+    # Samsung Scenario
+    # =================================================
+
+    samsung_scenario = build_per_scenarios(
+        samsung,
+        micron_per
     )
 
     report += (
-        "본 모델은 PER + 성장성 + "
-        "ROE를 결합한 "
-        "상대가치 기반 모델입니다.\n"
+        "[PER 0.5 단위 시나리오]\n"
+        "------------------------------------------------------------\n"
+    )
+
+    for row in samsung_scenario:
+
+        report += (
+            f"PER {row['per']:>4.1f} | "
+            f"목표가 {row['target_price']:>10,.0f} | "
+            f"상승 {row['upside']:>7.1f}%\n"
+        )
+
+    report += (
+        f"\n[Micron 100% 기준]\n"
+        f"목표가 : {samsung_scenario[-1]['micron_target']:,.0f}\n"
+        f"상승여력 : {samsung_scenario[-1]['micron_upside']:.1f}%\n\n"
+    )
+
+    # =================================================
+    # SK Hynix
+    # =================================================
+
+    sk = df[df["name"] == "SK Hynix"].iloc[0]
+
+    gap = (micron_per / sk["pe"] - 1) * 100
+
+    report += (
+        "\n============================================================\n"
+        "SKHynix\n"
+        "============================================================\n"
+        f"현재주가 : {sk['price']:,.0f}\n"
+        f"현재PER  : {sk['pe']:.2f}\n"
+        f"현재EPS  : {sk['eps']:,.1f}\n"
+        f"MicronPER: {micron_per:.2f}\n"
+        f"PER Gap  : {gap:.1f}%\n\n"
+    )
+
+    sk_scenario = build_per_scenarios(
+        sk,
+        micron_per
     )
 
     report += (
-        "Micron을 글로벌 메모리 "
-        "벤치마크로 활용하여 "
-        "상대가치를 평가합니다.\n"
+        "[PER 0.5 단위 시나리오]\n"
+        "------------------------------------------------------------\n"
     )
+
+    for row in sk_scenario:
+
+        report += (
+            f"PER {row['per']:>4.1f} | "
+            f"목표가 {row['target_price']:>10,.0f} | "
+            f"상승 {row['upside']:>7.1f}%\n"
+        )
+
+    report += (
+        f"\n[Micron 100% 기준]\n"
+        f"목표가 : {sk_scenario[-1]['micron_target']:,.0f}\n"
+        f"상승여력 : {sk_scenario[-1]['micron_upside']:.1f}%\n\n"
+    )
+
+    # =================================================
+    # Final Comment
+    # =================================================
+
+    report += (
+        "\n🧠 최종 투자 해석\n"
+        "============================================================\n"
+    )
+
+    if samsung["pe"] < sk["pe"]:
+
+        report += (
+            "삼성전자가 SK하이닉스 대비 더 낮은 PER에서 거래되고 있습니다.\n"
+            "Micron 대비 할인율이 가장 큰 종목은 삼성전자입니다.\n"
+        )
+
+    else:
+
+        report += (
+            "SK하이닉스가 Micron 대비 상대가치 매력이 높습니다.\n"
+        )
 
     return report
 
 
 # =====================================================
-# 실행
+# Execute
 # =====================================================
 
 if __name__ == "__main__":
@@ -138,12 +186,10 @@ if __name__ == "__main__":
 
         send_telegram(report)
 
-        print(
-            "\n[SUCCESS] Telegram sent"
-        )
+        print("[SUCCESS] Telegram sent")
 
     except Exception as e:
 
-        print(
-            f"\n[ERROR] {e}"
-        )
+        print(f"[ERROR] {e}")
+```
+
