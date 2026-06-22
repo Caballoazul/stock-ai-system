@@ -195,7 +195,7 @@ return report
 
 # =====================================================
 
-if **name** == "**main**":
+if __name__ == "__main__":
 
 try:
 
@@ -211,4 +211,3 @@ except Exception as e:
 
     print(f"[ERROR] {e}")
     raise
-```
