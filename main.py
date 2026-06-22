@@ -1,211 +1,149 @@
 # =====================================================
-# analysis.py
-# Semiconductor Quant Engine v2
+# main.py
+# Semiconductor Quant Dashboard v4.0
 # =====================================================
 
-import pandas as pd
+from micron_per import get_micron_data
+from samsung_per import get_samsung_data
+from skhynix_per import get_skhynix_data
 
+from analysis import (
+    make_analysis,
+    build_quant_dataframe,
+    get_ranking,
+    build_scenario
+)
 
-# =====================================================
-# 정규화
-# =====================================================
-
-def normalize(series):
-
-    if series.max() == series.min():
-        return pd.Series([0.5] * len(series))
-
-    return (
-        series - series.min()
-    ) / (
-        series.max() - series.min()
-    )
+from telegram_sender import send_telegram
 
 
 # =====================================================
-# 기존 적정가 계산
+# 리포트 생성
 # =====================================================
 
-def calculate_fair_value(eps, target_pe=10):
+def build_report():
 
-    if not eps:
-        return 0
+    raw_data = [
 
-    return eps * target_pe
+        get_micron_data(),
+        get_samsung_data(),
+        get_skhynix_data()
 
+    ]
 
-def calculate_gap(price, fair_value):
+    # 개별 분석
+    results = [
+        make_analysis(d)
+        for d in raw_data
+    ]
 
-    if not price or not fair_value:
-        return 0
+    # 퀀트 엔진
+    df = build_quant_dataframe(results)
 
-    return (fair_value - price) / price * 100
+    ranking = get_ranking(df)
 
+    scenarios = build_scenario(df)
 
-# =====================================================
-# 개별 종목 분석
-# =====================================================
+    report = ""
 
-def make_analysis(data):
+    # =================================================
+    # 1. 퀀트 스코어
+    # =================================================
 
-    eps = data.get("eps", 0)
-    price = data.get("price", 0)
-
-    fair_value = calculate_fair_value(eps)
-    gap = calculate_gap(price, fair_value)
-
-    return {
-        "name": data["name"],
-        "ticker": data["ticker"],
-
-        "price": price,
-        "pe": data.get("pe", 0),
-        "eps": eps,
-
-        "eps_growth": data.get("eps_growth", 0),
-        "revenue_growth": data.get("revenue_growth", 0),
-        "roe": data.get("roe", 0),
-
-        "fair_value": fair_value,
-        "gap": gap
-    }
-
-
-# =====================================================
-# 퀀트 스코어 계산
-# =====================================================
-
-def build_quant_dataframe(results):
-
-    df = pd.DataFrame(results)
-
-    micron = df[df["name"] == "Micron"].iloc[0]
-
-    micron_per = micron["pe"]
-
-    # -------------------------------------------------
-    # 점수 계산
-    # -------------------------------------------------
-
-    df["per_score"] = (
-        1 - (df["pe"] / micron_per)
-    )
-
-    df["eps_score"] = normalize(
-        df["eps_growth"].fillna(0)
-    )
-
-    df["revenue_score"] = normalize(
-        df["revenue_growth"].fillna(0)
-    )
-
-    df["roe_score"] = normalize(
-        df["roe"].fillna(0)
-    )
-
-    # -------------------------------------------------
-    # 최종 점수
-    # -------------------------------------------------
-
-    df["final_score"] = (
-
-        df["per_score"] * 0.40 +
-
-        df["eps_score"] * 0.25 +
-
-        df["revenue_score"] * 0.20 +
-
-        df["roe_score"] * 0.15
-
-    )
-
-    return df.sort_values(
-        "final_score",
-        ascending=False
-    )
-
-
-# =====================================================
-# 투자 순위
-# =====================================================
-
-def get_ranking(df):
-
-    ranking = []
+    report += "📊 반도체 퀀트 스코어\n"
+    report += "=" * 30 + "\n\n"
 
     for _, row in df.iterrows():
 
-        ranking.append({
-            "name": row["name"],
-            "score": round(
-                row["final_score"], 3
-            )
-        })
+        report += (
+            f"{row['name']}\n"
+            f"Score : {row['final_score']:.3f}\n"
+            f"PER   : {row['pe']:.2f}\n"
+            f"ROE   : {row['roe']:.2f}\n\n"
+        )
 
-    return ranking
+    # =================================================
+    # 2. 순위
+    # =================================================
+
+    report += "\n🏆 투자 순위\n"
+    report += "=" * 30 + "\n"
+
+    for idx, r in enumerate(ranking, start=1):
+
+        report += (
+            f"{idx}위 "
+            f"{r['name']} "
+            f"(Score {r['score']})\n"
+        )
+
+    # =================================================
+    # 3. Micron 시나리오
+    # =================================================
+
+    report += "\n\n📈 Micron PER 기준 시나리오\n"
+    report += "=" * 30 + "\n"
+
+    for s in scenarios:
+
+        report += (
+            f"\n{s['name']}\n"
+            f"현재 PER : {s['current_per']}\n"
+            f"Micron PER : {s['micron_per']}\n"
+            f"목표가 : {s['target_price']:,.0f}\n"
+            f"상승여력 : {s['upside']}%\n"
+        )
+
+    # =================================================
+    # 4. 최종 해석
+    # =================================================
+
+    top = ranking[0]
+
+    report += "\n\n🧠 최종 투자 해석\n"
+    report += "=" * 30 + "\n"
+
+    report += (
+        f"현재 퀀트 모델 기준 "
+        f"최우수 종목은 "
+        f"{top['name']} 입니다.\n\n"
+    )
+
+    report += (
+        "본 모델은 PER + 성장성 + "
+        "ROE를 결합한 "
+        "상대가치 기반 모델입니다.\n"
+    )
+
+    report += (
+        "Micron을 글로벌 메모리 "
+        "벤치마크로 활용하여 "
+        "상대가치를 평가합니다.\n"
+    )
+
+    return report
 
 
 # =====================================================
-# Micron PER 기준 시나리오
-# =====================================================
-
-def build_scenario(df):
-
-    scenarios = []
-
-    micron = df[
-        df["name"] == "Micron"
-    ].iloc[0]
-
-    micron_per = micron["pe"]
-
-    for _, row in df.iterrows():
-
-        if row["name"] == "Micron":
-            continue
-
-        current_price = row["price"]
-        current_per = row["pe"]
-
-        if current_per == 0:
-            continue
-
-        eps = current_price / current_per
-
-        target_price = eps * micron_per
-
-        upside = (
-            target_price /
-            current_price - 1
-        ) * 100
-
-        scenarios.append({
-
-            "name": row["name"],
-
-            "current_per":
-                round(current_per, 2),
-
-            "micron_per":
-                round(micron_per, 2),
-
-            "target_price":
-                round(target_price, 0),
-
-            "upside":
-                round(upside, 1)
-
-        })
-
-    return scenarios
-
-
-# =====================================================
-# 단독 실행 테스트
+# 실행
 # =====================================================
 
 if __name__ == "__main__":
 
-    print(
-        "Semiconductor Quant Engine Ready"
-    )
+    try:
+
+        report = build_report()
+
+        print(report)
+
+        send_telegram(report)
+
+        print(
+            "\n[SUCCESS] Telegram sent"
+        )
+
+    except Exception as e:
+
+        print(
+            f"\n[ERROR] {e}"
+        )
