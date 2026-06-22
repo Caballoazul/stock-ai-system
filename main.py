@@ -197,17 +197,18 @@ return report
 
 if __name__ == "__main__":
 
-try:
+    try:
 
-    report = build_report()
+        report = build_report()
 
-    print(report)
+        print(report)
 
-    send_telegram(report)
+        send_telegram(report)
 
-    print("[SUCCESS] Telegram sent")
+        print("[SUCCESS] Telegram sent")
 
-except Exception as e:
+    except Exception as e:
 
-    print(f"[ERROR] {e}")
-    raise
+        print(f"[ERROR] {e}")
+    
+        raise
