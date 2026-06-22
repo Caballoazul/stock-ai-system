@@ -1,9 +1,3 @@
-
-# =====================================================
-# main.py
-# Semiconductor PER Dashboard v5
-# =====================================================
-
 from micron_per import get_micron_data
 from samsung_per import get_samsung_data
 from skhynix_per import get_skhynix_data
@@ -11,15 +5,12 @@ from skhynix_per import get_skhynix_data
 from analysis import (
     make_analysis,
     build_quant_dataframe,
-    build_per_scenarios
+    build_per_scenarios,
+    calc_per_gap
 )
 
 from telegram_sender import send_telegram
 
-
-# =====================================================
-# Report Builder
-# =====================================================
 
 def build_report():
 
@@ -37,10 +28,10 @@ def build_report():
     df = build_quant_dataframe(results)
 
     micron = df[df["name"] == "Micron"].iloc[0]
+    samsung = df[df["name"] == "Samsung"].iloc[0]
+    sk = df[df["name"] == "SK Hynix"].iloc[0]
 
-    micron_price = micron["price"]
-    micron_per = micron["pe"]
-    micron_eps = micron["eps"]
+    micron_per = float(micron["pe"])
 
     report = ""
 
@@ -52,18 +43,19 @@ def build_report():
         "=====================\n"
         "Micron\n"
         "=====================\n"
-        f"현재주가 : ${micron_price:,.1f}\n"
-        f"현재PER  : {micron_per:.2f}\n"
-        f"현재EPS  : {micron_eps:.1f}\n\n"
+        f"현재주가 : ${micron['price']:,.1f}\n"
+        f"현재PER  : {micron['pe']:.2f}\n"
+        f"현재EPS  : {micron['eps']:,.1f}\n\n"
     )
 
     # =================================================
     # Samsung
     # =================================================
 
-    samsung = df[df["name"] == "Samsung"].iloc[0]
-
-    gap = (micron_per / samsung["pe"] - 1) * 100
+    samsung_gap = calc_per_gap(
+        samsung["pe"],
+        micron_per
+    )
 
     report += (
         "=====================\n"
@@ -73,14 +65,10 @@ def build_report():
         f"현재PER  : {samsung['pe']:.2f}\n"
         f"현재EPS  : {samsung['eps']:,.1f}\n"
         f"MicronPER: {micron_per:.2f}\n"
-        f"PER Gap  : {gap:.1f}%\n\n"
+        f"PER Gap  : {samsung_gap:.1f}%\n\n"
     )
 
-    # =================================================
-    # Samsung Scenario
-    # =================================================
-
-    samsung_scenario = build_per_scenarios(
+    samsung_scenarios = build_per_scenarios(
         samsung,
         micron_per
     )
@@ -90,7 +78,7 @@ def build_report():
         "------------------------------------------------------------\n"
     )
 
-    for row in samsung_scenario:
+    for row in samsung_scenarios[:-1]:
 
         report += (
             f"PER {row['per']:>4.1f} | "
@@ -99,18 +87,19 @@ def build_report():
         )
 
     report += (
-        f"\n[Micron 100% 기준]\n"
-        f"목표가 : {samsung_scenario[-1]['micron_target']:,.0f}\n"
-        f"상승여력 : {samsung_scenario[-1]['micron_upside']:.1f}%\n\n"
+        "\n[Micron 100% 기준]\n"
+        f"목표가 : {samsung_scenarios[-1]['micron_target']:,.0f}\n"
+        f"상승여력 : {samsung_scenarios[-1]['micron_upside']:.1f}%\n\n"
     )
 
     # =================================================
     # SK Hynix
     # =================================================
 
-    sk = df[df["name"] == "SK Hynix"].iloc[0]
-
-    gap = (micron_per / sk["pe"] - 1) * 100
+    sk_gap = calc_per_gap(
+        sk["pe"],
+        micron_per
+    )
 
     report += (
         "\n============================================================\n"
@@ -120,10 +109,10 @@ def build_report():
         f"현재PER  : {sk['pe']:.2f}\n"
         f"현재EPS  : {sk['eps']:,.1f}\n"
         f"MicronPER: {micron_per:.2f}\n"
-        f"PER Gap  : {gap:.1f}%\n\n"
+        f"PER Gap  : {sk_gap:.1f}%\n\n"
     )
 
-    sk_scenario = build_per_scenarios(
+    sk_scenarios = build_per_scenarios(
         sk,
         micron_per
     )
@@ -133,7 +122,7 @@ def build_report():
         "------------------------------------------------------------\n"
     )
 
-    for row in sk_scenario:
+    for row in sk_scenarios[:-1]:
 
         report += (
             f"PER {row['per']:>4.1f} | "
@@ -142,13 +131,13 @@ def build_report():
         )
 
     report += (
-        f"\n[Micron 100% 기준]\n"
-        f"목표가 : {sk_scenario[-1]['micron_target']:,.0f}\n"
-        f"상승여력 : {sk_scenario[-1]['micron_upside']:.1f}%\n\n"
+        "\n[Micron 100% 기준]\n"
+        f"목표가 : {sk_scenarios[-1]['micron_target']:,.0f}\n"
+        f"상승여력 : {sk_scenarios[-1]['micron_upside']:.1f}%\n\n"
     )
 
     # =================================================
-    # Final Comment
+    # 투자 해석
     # =================================================
 
     report += (
@@ -156,25 +145,22 @@ def build_report():
         "============================================================\n"
     )
 
-    if samsung["pe"] < sk["pe"]:
+    if samsung_gap > sk_gap:
 
         report += (
-            "삼성전자가 SK하이닉스 대비 더 낮은 PER에서 거래되고 있습니다.\n"
-            "Micron 대비 할인율이 가장 큰 종목은 삼성전자입니다.\n"
+            f"현재 Micron 대비 가장 할인율이 큰 종목은 "
+            f"Samsung ({samsung_gap:.1f}%) 입니다.\n"
         )
 
     else:
 
         report += (
-            "SK하이닉스가 Micron 대비 상대가치 매력이 높습니다.\n"
+            f"현재 Micron 대비 가장 할인율이 큰 종목은 "
+            f"SK Hynix ({sk_gap:.1f}%) 입니다.\n"
         )
 
     return report
 
-
-# =====================================================
-# Execute
-# =====================================================
 
 if __name__ == "__main__":
 
@@ -191,5 +177,3 @@ if __name__ == "__main__":
     except Exception as e:
 
         print(f"[ERROR] {e}")
-
-
