@@ -1,4 +1,3 @@
-```python
 # =====================================================
 # analysis.py
 # Semiconductor Quant Engine v5
