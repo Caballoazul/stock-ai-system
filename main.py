@@ -19,13 +19,13 @@ from telegram_sender import send_telegram
 
 def build_report():
 
-raw_data = [
+    raw_data = [
 
-    get_micron_data(),
-    get_samsung_data(),
-    get_skhynix_data()
+        get_micron_data(),
+        get_samsung_data(),
+        get_skhynix_data()
 
-]
+    ]
 
 results = [
 
