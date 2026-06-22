@@ -10,7 +10,7 @@ def run():
         raw_data = [
             get_micron_data(),
             get_samsung_data(),
-            get_sk_hynix_data()
+            get_skhynix_data()
         ]
 
         results = [make_analysis(d) for d in raw_data]
