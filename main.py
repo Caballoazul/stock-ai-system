@@ -19,21 +19,17 @@ from telegram_sender import send_telegram
 
 def build_report():
 
-    raw_data = [
 
+    raw_data = [
         get_micron_data(),
         get_samsung_data(),
         get_skhynix_data()
-
     ]
 
-results = [
-
-    make_analysis(d)
-
-    for d in raw_data
-
-]
+    results = [
+        make_analysis(d)
+        for d in raw_data
+    ]
 
 df = build_quant_dataframe(results)
 
@@ -61,14 +57,11 @@ report = ""
 
 report += (
     "📅 미국장 마감\n\n"
-
     "=====================\n"
     "Micron\n"
     "=====================\n"
-
     f"현재주가 : ${micron['price']:,.1f}\n"
     f"전일대비 : {micron['change_pct']:+.1f}%\n"
-
     f"현재PER  : {micron['pe']:.2f}\n"
     f"현재EPS  : {micron['eps']:,.1f}\n\n"
 )
@@ -79,17 +72,13 @@ report += (
 
 report += (
     "📅 한국장 마감\n\n"
-
     "=====================\n"
     "Samsung\n"
     "=====================\n"
-
     f"현재주가 : {samsung['price']:,.0f}\n"
     f"전일대비 : {samsung['change_pct']:+.1f}%\n"
-
     f"현재PER  : {samsung['pe']:.2f}\n"
     f"현재EPS  : {samsung['eps']:,.1f}\n"
-
     f"MicronPER: {micron_per:.2f}\n"
     f"PER Gap  : {samsung_gap:.1f}%\n\n"
 )
@@ -113,8 +102,7 @@ for row in samsung_scenarios[:-1]:
 
     report += (
         f"\nMicron({micron_per:.2f})\n"
-        f"목표가 : "
-        f"{samsung_scenarios[-1]['micron_target']:,.0f}\n\n"
+        f"목표가 : {samsung_scenarios[-1]['micron_target']:,.0f}\n\n"
     )
 
 # =================================================
@@ -125,13 +113,10 @@ report += (
     "============================================================\n"
     "SK Hynix\n"
     "============================================================\n"
-
     f"현재주가 : {sk['price']:,.0f}\n"
     f"전일대비 : {sk['change_pct']:+.1f}%\n"
-
     f"현재PER  : {sk['pe']:.2f}\n"
     f"현재EPS  : {sk['eps']:,.1f}\n"
-
     f"MicronPER: {micron_per:.2f}\n"
     f"PER Gap  : {sk_gap:.1f}%\n\n"
 )
@@ -153,11 +138,10 @@ for row in sk_scenarios[:-1]:
         f" | 목표가 {row['target_price']:>12,.0f}\n"
     )
 
-    report += (
-        f"\nMicron({micron_per:.2f})\n"
-        f"목표가 : "
-        f"{sk_scenarios[-1]['micron_target']:,.0f}\n\n"
-    )
+report += (
+    f"\nMicron({micron_per:.2f})\n"
+    f"목표가 : {sk_scenarios[-1]['micron_target']:,.0f}\n\n"
+)
 
 # =================================================
 # 투자 해석
@@ -189,26 +173,30 @@ else:
 
     return report
 
+
 # =====================================================
 
 # Execute
 
 # =====================================================
 
-if __name__ == "__main__":
+if name == "main":
 
-    try:
 
-        report = build_report()
+try:
 
-        print(report)
+    report = build_report()
 
-        send_telegram(report)
+    print(report)
 
-        print("[SUCCESS] Telegram sent")
+    send_telegram(report)
 
-    except Exception as e:
+    print("[SUCCESS] Telegram sent")
 
-        print(f"[ERROR] {e}")
-    
-        raise
+except Exception as e:
+
+    print(f"[ERROR] {e}")
+
+    raise
+
+
