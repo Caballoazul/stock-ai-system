@@ -1,4 +1,4 @@
-```python
+
 # =====================================================
 # main.py
 # Semiconductor PER Dashboard v5
