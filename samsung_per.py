@@ -18,6 +18,15 @@ def get_samsung_data():
         ticker = yf.Ticker("005930.KS")
         info = ticker.info
 
+        hist = ticker.history(period="2d")
+
+        close_today = hist["Close"].iloc[-1]
+        close_yesterday = hist["Close"].iloc[-2]
+
+        change_pct = (
+            close_today / close_yesterday - 1
+        ) * 100
+        
         price = (
             info.get("currentPrice")
             or info.get("regularMarketPrice")
@@ -39,7 +48,8 @@ def get_samsung_data():
         return {
             "name": "Samsung",
             "ticker": "005930.KS",
-
+            "change_pct": change_pct,
+            
             # 가격 지표
             "price": float(price) if price else 0,
 
