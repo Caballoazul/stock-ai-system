@@ -111,11 +111,11 @@ for row in samsung_scenarios[:-1]:
         f" | 목표가 {row['target_price']:>12,.0f}\n"
     )
 
-report += (
-    f"\nMicron({micron_per:.2f})\n"
-    f"목표가 : "
-    f"{samsung_scenarios[-1]['micron_target']:,.0f}\n\n"
-)
+    report += (
+        f"\nMicron({micron_per:.2f})\n"
+        f"목표가 : "
+        f"{samsung_scenarios[-1]['micron_target']:,.0f}\n\n"
+    )
 
 # =================================================
 # SK Hynix
@@ -153,11 +153,11 @@ for row in sk_scenarios[:-1]:
         f" | 목표가 {row['target_price']:>12,.0f}\n"
     )
 
-report += (
-    f"\nMicron({micron_per:.2f})\n"
-    f"목표가 : "
-    f"{sk_scenarios[-1]['micron_target']:,.0f}\n\n"
-)
+    report += (
+        f"\nMicron({micron_per:.2f})\n"
+        f"목표가 : "
+        f"{sk_scenarios[-1]['micron_target']:,.0f}\n\n"
+    )
 
 # =================================================
 # 투자 해석
@@ -182,12 +182,12 @@ else:
         f"SK Hynix ({sk_gap:.1f}%) 입니다.\n"
     )
 
-report += (
-    "\n본 모델은 PER 상대가치 기반 평가 모델이며 "
-    "Micron을 글로벌 메모리 벤치마크로 활용합니다."
-)
+    report += (
+        "\n본 모델은 PER 상대가치 기반 평가 모델이며 "
+        "Micron을 글로벌 메모리 벤치마크로 활용합니다."
+    )
 
-return report
+    return report
 
 # =====================================================
 
