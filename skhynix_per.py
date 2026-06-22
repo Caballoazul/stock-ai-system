@@ -1,21 +1,21 @@
 # =====================================================
-# samsung_per.py
-# 삼성전자 데이터 수집 모듈
+# skhynix_per.py
+# SK하이닉스 데이터 수집 모듈
 # =====================================================
 
 import yfinance as yf
 
 
-def get_samsung_data():
+def get_skhynix_data():
     """
-    삼성전자(005930.KS) 데이터 수집
+    SK하이닉스(000660.KS) 데이터 수집
 
     Returns:
         dict
     """
 
     try:
-        ticker = yf.Ticker("005930.KS")
+        ticker = yf.Ticker("000660.KS")
         info = ticker.info
 
         price = (
@@ -37,8 +37,8 @@ def get_samsung_data():
         )
 
         return {
-            "name": "Samsung",
-            "ticker": "005930.KS",
+            "name": "SK Hynix",
+            "ticker": "000660.KS",
 
             # 가격 지표
             "price": float(price) if price else 0,
@@ -64,11 +64,11 @@ def get_samsung_data():
 
     except Exception as e:
 
-        print(f"[ERROR] Samsung Data Error : {e}")
+        print(f"[ERROR] SK Hynix Data Error : {e}")
 
         return {
-            "name": "Samsung",
-            "ticker": "005930.KS",
+            "name": "SK Hynix",
+            "ticker": "000660.KS",
 
             "price": 0,
             "pe": 0,
@@ -86,9 +86,9 @@ def get_samsung_data():
 
 if __name__ == "__main__":
 
-    data = get_samsung_data()
+    data = get_skhynix_data()
 
-    print("\n=== Samsung Data ===\n")
+    print("\n=== SK Hynix Data ===\n")
 
     for k, v in data.items():
         print(f"{k}: {v}")
