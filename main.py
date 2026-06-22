@@ -19,7 +19,6 @@ from telegram_sender import send_telegram
 
 def build_report():
 
-```
 raw_data = [
 
     get_micron_data(),
@@ -189,7 +188,6 @@ report += (
 )
 
 return report
-```
 
 # =====================================================
 
@@ -199,7 +197,6 @@ return report
 
 if **name** == "**main**":
 
-```
 try:
 
     report = build_report()
