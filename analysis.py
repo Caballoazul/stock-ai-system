@@ -2,87 +2,114 @@ import pandas as pd
 
 
 # =====================================
-# PER 시나리오 생성
+# PER Gap 계산
 # =====================================
-def build_per_scenarios(price, current_per, target_per):
+def calc_gap(current_pe, micron_pe):
 
-    eps = price / current_per
+    return (micron_pe / current_pe - 1) * 100
+
+
+# =====================================
+# 개별 종목 분석
+# =====================================
+def analyze_company(company, micron):
+
+    price = float(company["price"])
+    pe = float(company["pe"])
+    eps = float(company["eps"])
+
+    micron_pe = float(micron["pe"])
+
+    target_price = eps * micron_pe
+
+    gap = calc_gap(pe, micron_pe)
+
+    return {
+        "name": company["name"],
+        "price": price,
+        "pe": pe,
+        "eps": eps,
+        "gap": gap,
+        "target_price": target_price
+    }
+
+
+# =====================================
+# PER 시나리오 (0.5 step)
+# =====================================
+def build_per_scenarios(company, micron_per):
+
+    price = float(company["price"])
+    pe = float(company["pe"])
+
+    eps = price / pe
 
     scenarios = []
 
-    per_list = [6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, target_per]
+    start = round(pe * 2) / 2
 
-    for per in per_list:
+    per = start
 
-        target_price = eps * per
+    while per <= micron_per:
 
         scenarios.append({
-            "PER": round(per, 2),
-            "Target Price": int(target_price)
+            "PER": round(per, 1),
+            "Target Price": int(eps * per)
         })
 
-    return pd.DataFrame(scenarios)
+        per += 0.5
+
+    return scenarios
 
 
 # =====================================
-# 정규화 함수
+# 전체 리포트 생성
 # =====================================
-def normalize(series):
+def make_summary_report(micron, samsung, sk):
 
-    return (series - series.min()) / (series.max() - series.min() + 1e-9)
+    m = analyze_company(micron, micron)
+    s = analyze_company(samsung, micron)
+    k = analyze_company(sk, micron)
 
+    report = []
 
-# =====================================
-# 퀀트 점수 생성
-# =====================================
-def build_quant_dataframe(df):
+    report.append("📊 Semiconductor Investment Report")
+    report.append("=" * 50)
 
-    df = df.copy()
+    report.append(f"Micron PER: {m['pe']:.2f}")
+    report.append("=" * 50)
 
-    micron_per = df[df["name"] == "Micron"]["pe"].iloc[0]
+    # ================================
+    # 삼성전자 / SK하이닉스
+    # ================================
+    for item in [s, k]:
 
-    df["per_score"] = 1 - (df["pe"] / micron_per)
+        report.append(f"\n{item['name']}")
+        report.append("-" * 40)
 
-    df["eps_score"] = normalize(df["eps_growth"].fillna(0))
-    df["revenue_score"] = normalize(df["revenue_growth"].fillna(0))
-    df["roe_score"] = normalize(df["roe"].fillna(0))
+        report.append(f"Price : {item['price']:,.0f}")
+        report.append(f"PER   : {item['pe']:.2f}")
+        report.append(f"EPS   : {item['eps']:.2f}")
 
-    df["final_score"] = (
-        df["per_score"] * 0.40 +
-        df["eps_score"] * 0.25 +
-        df["revenue_score"] * 0.20 +
-        df["roe_score"] * 0.15
-    )
+        report.append(f"Micron 대비 Gap : {item['gap']:.1f}%")
 
-    return df
-
-
-# =====================================
-# PER Gap 계산
-# =====================================
-def calc_per_gap(current_per, micron_per):
-
-    return (micron_per / current_per - 1) * 100
-
-
-# =====================================
-# 분석 텍스트 생성
-# =====================================
-def make_analysis(df):
-
-    micron = df[df["name"] == "Micron"].iloc[0]
-
-    result = []
-    result.append(f"Micron PER 기준: {micron['pe']:.2f}")
-    result.append("-" * 40)
-
-    for _, row in df.iterrows():
-
-        if row["name"] == "Micron":
-            continue
-
-        gap = calc_per_gap(row["pe"], micron["pe"])
-
-        result.append(
-            f"{row['name']} | PER: {row['pe']:.2f} | Gap: {gap:.1f}%"
+        report.append(
+            f"Target Price (Micron PER): {item['target_price']:,.0f}"
         )
+
+        # ============================
+        # PER 시나리오
+        # ============================
+        report.append("\nPER Scenario (0.5 step)")
+
+        scenarios = build_per_scenarios(item, m["pe"])
+
+        for s in scenarios:
+
+            report.append(
+                f"PER {s['PER']:.1f} → {s['Target Price']:,.0f}"
+            )
+
+        report.append("\n" + "=" * 50)
+
+    return "\n".join(report)
