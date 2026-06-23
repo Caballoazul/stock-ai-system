@@ -2,7 +2,18 @@ import pandas as pd
 
 
 # =====================================================
-# PER 괴리율 (Micron 대비)
+# 포맷 함수 (한글화 + 통화)
+# =====================================================
+def format_krw(value):
+    return f"{value:,.0f}원"
+
+
+def format_usd(value):
+    return f"${value:,.2f}"
+
+
+# =====================================================
+# PER 괴리율 (Micron 기준)
 # =====================================================
 def calc_gap(pe, micron_pe):
 
@@ -10,7 +21,7 @@ def calc_gap(pe, micron_pe):
 
 
 # =====================================================
-# 삼성 우선주 할인율 (Spread)
+# 삼성 우선주 괴리율
 # =====================================================
 def calc_spread(common_price, preferred_price):
 
@@ -26,15 +37,13 @@ def build_per_scenarios(price, pe, micron_pe):
 
     scenarios = []
 
-    start = max(0.5, round(pe * 2) / 2)
-
-    per = start
+    per = max(0.5, round(pe * 2) / 2)
 
     while per <= micron_pe:
 
         scenarios.append({
-            "per": round(per, 2),
-            "price": int(eps * per)
+            "per": per,
+            "price": eps * per
         })
 
         per += 0.5
@@ -43,7 +52,7 @@ def build_per_scenarios(price, pe, micron_pe):
 
 
 # =====================================================
-# 기본 종목 분석 (SK 포함 공통)
+# 기본 종목 분석 (SK 포함)
 # =====================================================
 def analyze_basic(company, micron):
 
@@ -53,74 +62,72 @@ def analyze_basic(company, micron):
 
     micron_pe = float(micron["pe"])
 
-    gap = calc_gap(pe, micron_pe)
-
-    target_price = eps * micron_pe if eps else 0
-
-    scenarios = build_per_scenarios(price, pe, micron_pe)
-
     return {
         "name": company["name"],
         "price": price,
         "pe": pe,
         "eps": eps,
-        "gap": gap,
-        "target_price": target_price,
-        "scenarios": scenarios
+        "gap": calc_gap(pe, micron_pe),
+        "target_price": eps * micron_pe,
+        "scenarios": build_per_scenarios(price, pe, micron_pe)
     }
 
 
 # =====================================================
-# 삼성 (보통주 + 우선주 통합 분석)
+# 삼성 분석 (보통주 + 우선주)
 # =====================================================
 def analyze_samsung(common, preferred, micron):
 
-    common_price = float(common["price"])
-    preferred_price = float(preferred["price"])
+    c_price = float(common["price"])
+    p_price = float(preferred["price"])
 
     pe = float(common["pe"])
     eps = float(common["eps"])
 
     micron_pe = float(micron["pe"])
 
-    # 1️⃣ spread (우선주 할인율)
-    spread = calc_spread(common_price, preferred_price)
+    # spread
+    spread = calc_spread(c_price, p_price)
 
-    # 2️⃣ 보정 PER
-    adjusted_pe = pe * (1 + spread)
-
-    # 3️⃣ 적정가
-    target_micron = eps * micron_pe if eps else 0
-    target_adjusted = eps * adjusted_pe if eps else 0
-
-    # 4️⃣ PER 시나리오
-    scenarios = build_per_scenarios(
-        common_price,
-        pe,
-        micron_pe
-    )
+    # adjusted PER
+    adj_per = pe * (1 + spread)
 
     return {
-        "name": "Samsung",
-        "common_price": common_price,
-        "preferred_price": preferred_price,
-        "pe": pe,
+        "name": "삼성전자",
+
+        # 보통주
+        "common_price": c_price,
+        "common_pe": pe,
+
+        # 우선주
+        "preferred_price": p_price,
+        "preferred_pe": p_price / eps if eps else 0,
+
+        # EPS
         "eps": eps,
 
+        # 핵심 지표
         "spread": spread,
-        "adjusted_pe": adjusted_pe,
+        "adjusted_pe": adj_per,
 
-        "gap": calc_gap(pe, micron_pe),
+        # Micron 비교
+        "gap_common": calc_gap(pe, micron_pe),
+        "gap_preferred": calc_gap(p_price / eps if eps else 0, micron_pe),
 
-        "target_micron": target_micron,
-        "target_adjusted": target_adjusted,
+        # 적정가
+        "target_common": eps * micron_pe,
+        "target_adjusted": eps * adj_per,
 
-        "scenarios": scenarios
+        # 시나리오 (보통주 기준)
+        "scenarios_common": build_per_scenarios(c_price, pe, micron_pe),
+
+        # 시나리오 (우선주 기준)
+        "scenarios_preferred": build_per_scenarios(p_price, p_price / eps if eps else 0, micron_pe)
     }
 
 
 # =====================================================
-# SK 하이닉스 (기존 구조 유지)
+# SK하이닉스
 # =====================================================
 def analyze_sk(sk, micron):
 
@@ -128,7 +135,7 @@ def analyze_sk(sk, micron):
 
 
 # =====================================================
-# 전체 리포트 생성
+# 전체 리포트 생성 (한글 + 통화 + 콤마)
 # =====================================================
 def make_summary_report(micron, samsung_common, samsung_preferred, sk):
 
@@ -139,68 +146,75 @@ def make_summary_report(micron, samsung_common, samsung_preferred, sk):
 
     report = []
 
-    # ================================
-    # Header
-    # ================================
-    report.append("📊 Semiconductor Valuation Report (v2)")
+    # =========================
+    # 헤더
+    # =========================
+    report.append("📊 반도체 투자 밸류에이션 리포트")
     report.append("=" * 60)
-    report.append(f"Micron PER: {m_pe:.2f}")
+    report.append(f"마이크론 PER: {m_pe:.2f}배 (USD 기준)")
     report.append("=" * 60)
 
-    # ================================
-    # 삼성전자
-    # ================================
-    report.append("\n🔷 Samsung Common")
-    report.append(f"Price : {s['common_price']:,.0f}")
-    report.append(f"PER   : {s['pe']:.2f}")
-    report.append(f"EPS   : {s['eps']:.2f}")
-    report.append(f"Gap   : {s['gap']:.1f}%")
+    # =========================
+    # 삼성전자 보통주
+    # =========================
+    report.append("\n🔷 삼성전자 (보통주)")
 
-    report.append(f"Target (Micron): {s['target_micron']:,.0f}")
-    report.append(f"Target (Adj PER): {s['target_adjusted']:,.0f}")
+    report.append(f"현재가 : {format_krw(s['common_price'])}")
+    report.append(f"PER    : {s['common_pe']:.2f}배")
+    report.append(f"EPS    : {format_krw(s['eps'])}")
+    report.append(f"괴리율 : {s['gap_common']:.1f}%")
 
-    report.append("\nPER Scenario")
-    for x in s["scenarios"]:
-        report.append(f"{x['per']:.2f} → {x['price']:,.0f}")
+    report.append(f"적정가 (Micron 기준): {format_krw(s['target_common'])}")
+    report.append(f"적정가 (보정 PER)   : {format_krw(s['target_adjusted'])}")
 
-    # ================================
+    report.append("\n📌 PER 시나리오")
+    for x in s["scenarios_common"]:
+        report.append(
+            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
+        )
+
+    # =========================
     # 삼성 우선주
-    # ================================
-    report.append("\n🔷 Samsung Preferred")
-    report.append(f"Price : {s['preferred_price']:,.0f}")
-    report.append(f"Spread: {s['spread']:.2%}")
-    report.append(f"Adj PER: {s['adjusted_pe']:.2f}")
+    # =========================
+    report.append("\n🔷 삼성전자 (우선주)")
 
-    # ================================
-    # SK 하이닉스
-    # ================================
-    report.append("\n🔷 SK Hynix")
-    report.append(f"Price : {k['price']:,.0f}")
-    report.append(f"PER   : {k['pe']:.2f}")
-    report.append(f"EPS   : {k['eps']:.2f}")
-    report.append(f"Gap   : {k['gap']:.1f}%")
-    report.append(f"Target: {k['target_price']:,.0f}")
+    report.append(f"현재가 : {format_krw(s['preferred_price'])}")
+    report.append(f"PER    : {s['preferred_pe']:.2f}배")
+    report.append(f"괴리율 : {s['spread']*100:.2f}%")
 
-    report.append("\nPER Scenario")
+    report.append(f"적정가 (Micron 기준): {format_krw(s['target_common'])}")
+
+    report.append("\n📌 PER 시나리오")
+    for x in s["scenarios_preferred"]:
+        report.append(
+            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
+        )
+
+    # =========================
+    # SK하이닉스
+    # =========================
+    report.append("\n🔷 SK하이닉스")
+
+    report.append(f"현재가 : {format_krw(k['price'])}")
+    report.append(f"PER    : {k['pe']:.2f}배")
+    report.append(f"EPS    : {format_krw(k['eps'])}")
+    report.append(f"괴리율 : {k['gap']:.1f}%")
+    report.append(f"적정가 : {format_krw(k['target_price'])}")
+
+    report.append("\n📌 PER 시나리오")
     for x in k["scenarios"]:
-        report.append(f"{x['per']:.2f} → {x['price']:,.0f}")
+        report.append(
+            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
+        )
 
-    # ================================
-    # Summary
-    # ================================
+    # =========================
+    # 요약
+    # =========================
     report.append("\n" + "=" * 60)
-    report.append("📌 Summary")
+    report.append("📌 투자 요약")
 
-    report.append(
-        f"Samsung Spread (Pref Discount): {s['spread']:.2%}"
-    )
-
-    report.append(
-        f"Samsung Adjusted PER: {s['adjusted_pe']:.2f}"
-    )
-
-    report.append(
-        f"Micron Benchmark PER: {m_pe:.2f}"
-    )
+    report.append(f"삼성 Spread(우선주 할인): {s['spread']*100:.2f}%")
+    report.append(f"삼성 보정 PER: {s['adjusted_pe']:.2f}배")
+    report.append(f"마이크론 기준 PER: {m_pe:.2f}배")
 
     return "\n".join(report)
