@@ -1,8 +1,10 @@
 from micron_per import get_micron_data
+
 from samsung_per import (
     get_samsung_common_data,
     get_samsung_preferred_data
 )
+
 from skhynix_per import get_skhynix_data
 
 from analysis import make_summary_report
@@ -11,14 +13,17 @@ from telegram_sender import send_telegram
 
 
 # =====================================================
-# 데이터 수집 레이어
+# 데이터 수집
 # =====================================================
 def get_all_data():
 
     micron = get_micron_data()
 
     samsung_common = get_samsung_common_data()
-    samsung_preferred = get_samsung_preferred_data()
+
+    samsung_preferred = get_samsung_preferred_data(
+        samsung_common["eps"]
+    )
 
     sk = get_skhynix_data()
 
