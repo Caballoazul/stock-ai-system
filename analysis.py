@@ -86,5 +86,3 @@ def make_analysis(df):
         result.append(
             f"{row['name']} | PER: {row['pe']:.2f} | Gap: {gap:.1f}%"
         )
-
-    return "\n".join(result)
