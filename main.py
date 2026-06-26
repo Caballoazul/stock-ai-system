@@ -19,7 +19,9 @@ from report import (
     make_telegram_message,
 )
 
-from telegram_sender import send_telegram_message
+from telegram_sender import (
+    send_telegram_message,
+)
 
 
 # ==========================================================
@@ -30,9 +32,17 @@ def load_stock_data():
 
     stocks = []
 
-    stocks.append(get_micron_data())
-    stocks.append(get_samsung_data())
-    stocks.append(get_skhynix_data())
+    stocks.append(
+        get_micron_data()
+    )
+
+    stocks.append(
+        get_samsung_data()
+    )
+
+    stocks.append(
+        get_skhynix_data()
+    )
 
     return stocks
 
@@ -43,9 +53,13 @@ def load_stock_data():
 
 def main():
 
-    print("=" * 80)
-    print("Semiconductor PER Analysis")
-    print("=" * 80)
+    print("=" * 100)
+
+    print(
+        "Semiconductor PER Analysis"
+    )
+
+    print("=" * 100)
 
     stock_data = load_stock_data()
 
@@ -53,11 +67,17 @@ def main():
         stock_data
     )
 
-    result = make_analysis(df)
+    result = make_analysis(
+        df
+    )
 
-    summary = build_summary(result)
+    summary = build_summary(
+        result
+    )
 
-    print_report(result)
+    print_report(
+        result
+    )
 
     html_report = make_html_report(
         result
@@ -68,10 +88,18 @@ def main():
     )
 
     print()
+
     print("Best Company")
-    print(summary["BestCompany"])
+
+    print(
+        summary["BestCompany"]
+    )
+
     print("Quant Score")
-    print(summary["BestScore"])
+
+    print(
+        summary["BestScore"]
+    )
 
     try:
 
@@ -80,12 +108,19 @@ def main():
         )
 
         print()
-        print("Telegram Send : OK")
+
+        print(
+            "Telegram Send : OK"
+        )
 
     except Exception as e:
 
         print()
-        print("Telegram Send : FAIL")
+
+        print(
+            "Telegram Send : FAIL"
+        )
+
         print(e)
 
     return result
