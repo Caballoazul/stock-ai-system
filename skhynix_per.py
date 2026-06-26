@@ -1,39 +1,38 @@
-# =====================================================
-# skhynix_per.py
-# SK하이닉스 데이터 수집 모듈
-# =====================================================
+"""
+skhynix_per.py
+"""
 
 import yfinance as yf
 
 
-def get_skhynix_data():
-    """
-    SK하이닉스(000660.KS) 데이터 수집
+# ==========================================================
+# SK Hynix
+# ==========================================================
 
-    Returns:
-        dict
-    """
+def get_skhynix_data():
 
     try:
+
         ticker = yf.Ticker("000660.KS")
+
         info = ticker.info
 
         hist = ticker.history(period="2d")
 
-        close_today = hist["Close"].iloc[-1]
-        close_yesterday = hist["Close"].iloc[-2]
+        close_today = float(hist["Close"].iloc[-1])
+        close_yesterday = float(hist["Close"].iloc[-2])
 
         change_pct = (
-            close_today / close_yesterday - 1
+            (close_today / close_yesterday) - 1
         ) * 100
-        
+
         price = (
             info.get("currentPrice")
             or info.get("regularMarketPrice")
             or 0
         )
 
-        pe = (
+        per = (
             info.get("forwardPE")
             or info.get("trailingPE")
             or 0
@@ -45,60 +44,98 @@ def get_skhynix_data():
             or 0
         )
 
+        revenue_growth = (
+            info.get("revenueGrowth")
+            or 0
+        )
+
+        eps_growth = (
+            info.get("earningsGrowth")
+            or 0
+        )
+
+        roe = (
+            info.get("returnOnEquity")
+            or 0
+        )
+
+        market_cap = (
+            info.get("marketCap")
+            or 0
+        )
+
         return {
-            "name": "SK Hynix",
-            "ticker": "000660.KS",
-            "change_pct": change_pct,
-            
-            # 가격 지표
-            "price": float(price) if price else 0,
 
-            # 가치 지표
-            "pe": float(pe) if pe else 0,
-            "eps": float(eps) if eps else 0,
+            "Company": "SK Hynix",
 
-            # 성장성 지표
-            "eps_growth": float(
-                info.get("earningsGrowth") or 0
+            "Ticker": "000660.KS",
+
+            "Price": float(price),
+
+            "ChangePct": round(
+                change_pct,
+                2,
             ),
 
-            "revenue_growth": float(
-                info.get("revenueGrowth") or 0
+            "PER": float(per),
+
+            "EPS": float(eps),
+
+            "RevenueGrowth": float(
+                revenue_growth
             ),
 
-            # 수익성 지표
-            "roe": float(
-                info.get("returnOnEquity") or 0
-            )
+            "EPSGrowth": float(
+                eps_growth
+            ),
+
+            "ROE": float(roe),
+
+            "MarketCap": float(
+                market_cap
+            ),
+
         }
 
     except Exception as e:
 
-        print(f"[ERROR] SK Hynix Data Error : {e}")
+        print(
+            f"[SK Hynix ERROR] {e}"
+        )
 
         return {
-            "name": "SK Hynix",
-            "ticker": "000660.KS",
 
-            "price": 0,
-            "pe": 0,
-            "eps": 0,
+            "Company": "SK Hynix",
 
-            "eps_growth": 0,
-            "revenue_growth": 0,
-            "roe": 0
+            "Ticker": "000660.KS",
+
+            "Price": 0,
+
+            "ChangePct": 0,
+
+            "PER": 0,
+
+            "EPS": 0,
+
+            "RevenueGrowth": 0,
+
+            "EPSGrowth": 0,
+
+            "ROE": 0,
+
+            "MarketCap": 0,
+
         }
 
 
-# =====================================================
-# 단독 실행 테스트
-# =====================================================
+# ==========================================================
+# Test
+# ==========================================================
 
 if __name__ == "__main__":
 
     data = get_skhynix_data()
 
-    print("\n=== SK Hynix Data ===\n")
-
     for k, v in data.items():
-        print(f"{k}: {v}")
+
+        print(f"{k:15} : {v}")
