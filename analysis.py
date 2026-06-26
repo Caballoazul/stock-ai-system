@@ -1,220 +1,449 @@
+"""
+analysis.py
+Part 1
+"""
+
+from __future__ import annotations
+
+from typing import Dict, List, Optional
+
+import numpy as np
 import pandas as pd
 
 
-# =====================================================
-# 포맷 함수 (한글화 + 통화)
-# =====================================================
-def format_krw(value):
-    return f"{value:,.0f}원"
+# ==========================================================
+# Utility
+# ==========================================================
+
+def safe_float(value, default=np.nan):
+    try:
+        if value is None:
+            return default
+        if value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
 
 
-def format_usd(value):
-    return f"${value:,.2f}"
+def safe_divide(a, b):
+    a = safe_float(a)
+    b = safe_float(b)
+
+    if pd.isna(a) or pd.isna(b):
+        return np.nan
+
+    if b == 0:
+        return np.nan
+
+    return a / b
 
 
-# =====================================================
-# PER 괴리율 (Micron 기준)
-# =====================================================
-def calc_gap(pe, micron_pe):
+def safe_percent(value):
+    value = safe_float(value)
 
-    return (micron_pe / pe - 1) * 100
+    if pd.isna(value):
+        return np.nan
 
-
-# =====================================================
-# 삼성 우선주 괴리율
-# =====================================================
-def calc_spread(common_price, preferred_price):
-
-    return (common_price - preferred_price) / common_price
+    return value * 100
 
 
-# =====================================================
-# PER 시나리오 (0.5 step)
-# =====================================================
-def build_per_scenarios(price, pe, micron_pe):
+# ==========================================================
+# DataFrame
+# ==========================================================
 
-    eps = price / pe if pe != 0 else 0
+def build_quant_dataframe(stock_data: List[Dict]) -> pd.DataFrame:
 
-    scenarios = []
+    df = pd.DataFrame(stock_data)
 
-    per = max(0.5, round(pe * 2) / 2)
+    numeric_columns = [
+        "Price",
+        "MarketCap",
+        "PER",
+        "EPS",
+        "ROE",
+        "RevenueGrowth",
+        "EPSGrowth",
+    ]
 
-    while per <= micron_pe:
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce",
+            )
 
-        scenarios.append({
-            "per": per,
-            "price": eps * per
-        })
-
-        per += 0.5
-
-    return scenarios
+    return df
 
 
-# =====================================================
-# 기본 종목 분석 (SK 포함)
-# =====================================================
-def analyze_basic(company, micron):
+# ==========================================================
+# EPS
+# ==========================================================
 
-    price = float(company["price"])
-    pe = float(company["pe"])
-    eps = float(company["eps"])
+def calc_eps(price, per):
 
-    micron_pe = float(micron["pe"])
+    return safe_divide(price, per)
+
+
+# ==========================================================
+# Target Price
+# ==========================================================
+
+def calc_target_price(
+    current_price,
+    current_per,
+    target_per,
+):
+
+    eps = calc_eps(
+        current_price,
+        current_per,
+    )
+
+    if pd.isna(eps):
+        return np.nan
+
+    return eps * target_per
+
+
+# ==========================================================
+# PER GAP
+# ==========================================================
+
+def calc_per_gap(
+    current_per,
+    target_per,
+):
+
+    current_per = safe_float(current_per)
+    target_per = safe_float(target_per)
+
+    if pd.isna(current_per):
+        return np.nan
+
+    if current_per <= 0:
+        return np.nan
+
+    return (
+        (target_per / current_per) - 1
+    ) * 100
+
+
+# ==========================================================
+# Reference PER
+# ==========================================================
+
+def get_reference_per(
+    df: pd.DataFrame,
+    reference="Micron",
+):
+
+    ref = df[df["Company"] == reference]
+
+    if ref.empty:
+        return None
+
+    return safe_float(
+        ref.iloc[0]["PER"]
+    )
+
+# ==========================================================
+# PER Scenario
+# ==========================================================
+
+def build_per_scenarios(
+    current_price,
+    current_per,
+    target_per,
+    step=0.5,
+):
+
+    current_price = safe_float(current_price)
+    current_per = safe_float(current_per)
+    target_per = safe_float(target_per)
+
+    if pd.isna(current_price):
+        return pd.DataFrame()
+
+    if pd.isna(current_per):
+        return pd.DataFrame()
+
+    if current_per <= 0:
+        return pd.DataFrame()
+
+    eps = calc_eps(
+        current_price,
+        current_per,
+    )
+
+    start = min(current_per, target_per)
+    end = max(current_per, target_per)
+
+    rows = []
+
+    for per in np.arange(
+        start,
+        end + step,
+        step,
+    ):
+
+        target = eps * per
+
+        upside = (
+            (target / current_price) - 1
+        ) * 100
+
+        rows.append(
+            {
+                "PER": round(per, 2),
+                "TargetPrice": round(target),
+                "Upside(%)": round(upside, 2),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+# ==========================================================
+# PER Compare
+# ==========================================================
+
+def build_per_compare(df):
+
+    result = df.copy()
+
+    micron_per = get_reference_per(result)
+
+    if micron_per is None:
+        return result
+
+    result["ReferencePER"] = micron_per
+
+    result["PERGap(%)"] = result["PER"].apply(
+        lambda x: calc_per_gap(
+            x,
+            micron_per,
+        )
+    )
+
+    result["TargetPrice"] = result.apply(
+        lambda row: calc_target_price(
+            row["Price"],
+            row["PER"],
+            micron_per,
+        ),
+        axis=1,
+    )
+
+    result["Upside(%)"] = (
+        (
+            result["TargetPrice"]
+            / result["Price"]
+        ) - 1
+    ) * 100
+
+    return result
+
+
+# ==========================================================
+# Opinion
+# ==========================================================
+
+def investment_opinion(upside):
+
+    upside = safe_float(upside)
+
+    if pd.isna(upside):
+        return "N/A"
+
+    if upside >= 30:
+        return "★★★★★"
+
+    if upside >= 15:
+        return "★★★★☆"
+
+    if upside >= 5:
+        return "★★★☆☆"
+
+    if upside >= -5:
+        return "★★☆☆☆"
+
+    return "★☆☆☆☆"
+
+# ==========================================================
+# Quant Score
+# ==========================================================
+
+def normalize_score(
+    value,
+    minimum,
+    maximum,
+):
+
+    value = safe_float(value)
+
+    if pd.isna(value):
+        return np.nan
+
+    if maximum == minimum:
+        return 50.0
+
+    score = (
+        (value - minimum)
+        / (maximum - minimum)
+    ) * 100
+
+    score = max(0, score)
+    score = min(100, score)
+
+    return round(score, 2)
+
+
+# ==========================================================
+# PER Score
+# ==========================================================
+
+def calculate_per_score(df):
+
+    per_min = df["PER"].min()
+    per_max = df["PER"].max()
+
+    def score(per):
+
+        per = safe_float(per)
+
+        if pd.isna(per):
+            return np.nan
+
+        if per_max == per_min:
+            return 50.0
+
+        return round(
+            (
+                (per_max - per)
+                / (per_max - per_min)
+            ) * 100,
+            2,
+        )
+
+    return df["PER"].apply(score)
+
+
+# ==========================================================
+# Growth Score
+# ==========================================================
+
+def calculate_growth_score(series):
+
+    minimum = series.min()
+    maximum = series.max()
+
+    return series.apply(
+        lambda x: normalize_score(
+            x,
+            minimum,
+            maximum,
+        )
+    )
+
+
+# ==========================================================
+# Quant Calculation
+# ==========================================================
+
+def calculate_quant_score(df):
+
+    result = df.copy()
+
+    result["PERScore"] = calculate_per_score(result)
+
+    result["EPSScore"] = calculate_growth_score(
+        result["EPSGrowth"]
+    )
+
+    result["RevenueScore"] = calculate_growth_score(
+        result["RevenueGrowth"]
+    )
+
+    result["ROEScore"] = calculate_growth_score(
+        result["ROE"]
+    )
+
+    result["QuantScore"] = (
+        result["PERScore"] * 0.40
+        + result["EPSScore"] * 0.25
+        + result["RevenueScore"] * 0.20
+        + result["ROEScore"] * 0.15
+    ).round(2)
+
+    return result
+
+
+# ==========================================================
+# Rank
+# ==========================================================
+
+def append_rank(df):
+
+    result = df.copy()
+
+    result["Rank"] = (
+        result["QuantScore"]
+        .rank(
+            ascending=False,
+            method="dense",
+        )
+        .astype(int)
+    )
+
+    return result
+
+
+# ==========================================================
+# Analysis
+# ==========================================================
+
+def make_analysis(df):
+
+    result = build_per_compare(df)
+
+    result = calculate_quant_score(result)
+
+    result = append_rank(result)
+
+    result["Opinion"] = result["Upside(%)"].apply(
+        investment_opinion
+    )
+
+    return (
+        result.sort_values(
+            by="QuantScore",
+            ascending=False,
+        )
+        .reset_index(drop=True)
+    )
+
+
+# ==========================================================
+# Summary
+# ==========================================================
+
+def build_summary(df):
+
+    if df.empty:
+        return {}
+
+    best = df.iloc[0]
 
     return {
-        "name": company["name"],
-        "price": price,
-        "pe": pe,
-        "eps": eps,
-        "gap": calc_gap(pe, micron_pe),
-        "target_price": eps * micron_pe,
-        "scenarios": build_per_scenarios(price, pe, micron_pe)
+        "BestCompany": best["Company"],
+        "BestScore": best["QuantScore"],
+        "BestPER": best["PER"],
+        "TargetPrice": best["TargetPrice"],
+        "Upside": best["Upside(%)"],
     }
 
 
-# =====================================================
-# 삼성 분석 (보통주 + 우선주)
-# =====================================================
-def analyze_samsung(common, preferred, micron):
-
-    c_price = float(common["price"])
-    p_price = float(preferred["price"])
-
-    pe = float(common["pe"])
-    eps = float(common["eps"])
-
-    micron_pe = float(micron["pe"])
-
-    # spread
-    spread = calc_spread(c_price, p_price)
-
-    # adjusted PER
-    adj_per = pe * (1 + spread)
-
-    return {
-        "name": "삼성전자",
-
-        # 보통주
-        "common_price": c_price,
-        "common_pe": pe,
-
-        # 우선주
-        "preferred_price": p_price,
-        "preferred_pe": p_price / eps if eps else 0,
-
-        # EPS
-        "eps": eps,
-
-        # 핵심 지표
-        "spread": spread,
-        "adjusted_pe": adj_per,
-
-        # Micron 비교
-        "gap_common": calc_gap(pe, micron_pe),
-        "gap_preferred": calc_gap(p_price / eps if eps else 0, micron_pe),
-
-        # 적정가
-        "target_common": eps * micron_pe,
-        "target_adjusted": eps * adj_per,
-
-        # 시나리오 (보통주 기준)
-        "scenarios_common": build_per_scenarios(c_price, pe, micron_pe),
-
-        # 시나리오 (우선주 기준)
-        "scenarios_preferred": build_per_scenarios(p_price, p_price / eps if eps else 0, micron_pe)
-    }
-
-
-# =====================================================
-# SK하이닉스
-# =====================================================
-def analyze_sk(sk, micron):
-
-    return analyze_basic(sk, micron)
-
-
-# =====================================================
-# 전체 리포트 생성 (한글 + 통화 + 콤마)
-# =====================================================
-def make_summary_report(micron, samsung_common, samsung_preferred, sk):
-
-    m_pe = float(micron["pe"])
-
-    s = analyze_samsung(samsung_common, samsung_preferred, micron)
-    k = analyze_sk(sk, micron)
-
-    report = []
-
-    # =========================
-    # 헤더
-    # =========================
-    report.append("📊 반도체 투자 밸류에이션 리포트")
-    report.append("=" * 60)
-    report.append(f"마이크론 PER: {m_pe:.2f}배 (USD 기준)")
-    report.append("=" * 60)
-
-    # =========================
-    # 삼성전자 보통주
-    # =========================
-    report.append("\n🔷 삼성전자 (보통주)")
-
-    report.append(f"현재가 : {format_krw(s['common_price'])}")
-    report.append(f"PER    : {s['common_pe']:.2f}배")
-    report.append(f"EPS    : {format_krw(s['eps'])}")
-    report.append(f"괴리율 : {s['gap_common']:.1f}%")
-
-    report.append(f"적정가 (Micron 기준): {format_krw(s['target_common'])}")
-    report.append(f"적정가 (보정 PER)   : {format_krw(s['target_adjusted'])}")
-
-    report.append("\n📌 PER 시나리오")
-    for x in s["scenarios_common"]:
-        report.append(
-            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
-        )
-
-    # =========================
-    # 삼성 우선주
-    # =========================
-    report.append("\n🔷 삼성전자 (우선주)")
-
-    report.append(f"현재가 : {format_krw(s['preferred_price'])}")
-    report.append(f"PER    : {s['preferred_pe']:.2f}배")
-    report.append(f"괴리율 : {s['spread']*100:.2f}%")
-
-    report.append(f"적정가 (Micron 기준): {format_krw(s['target_common'])}")
-
-    report.append("\n📌 PER 시나리오")
-    for x in s["scenarios_preferred"]:
-        report.append(
-            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
-        )
-
-    # =========================
-    # SK하이닉스
-    # =========================
-    report.append("\n🔷 SK하이닉스")
-
-    report.append(f"현재가 : {format_krw(k['price'])}")
-    report.append(f"PER    : {k['pe']:.2f}배")
-    report.append(f"EPS    : {format_krw(k['eps'])}")
-    report.append(f"괴리율 : {k['gap']:.1f}%")
-    report.append(f"적정가 : {format_krw(k['target_price'])}")
-
-    report.append("\n📌 PER 시나리오")
-    for x in k["scenarios"]:
-        report.append(
-            f"{x['per']:.2f}배 → {format_krw(x['price'])}"
-        )
-
-    # =========================
-    # 요약
-    # =========================
-    report.append("\n" + "=" * 60)
-    report.append("📌 투자 요약")
-
-    report.append(f"삼성 Spread(우선주 할인): {s['spread']*100:.2f}%")
-    report.append(f"삼성 보정 PER: {s['adjusted_pe']:.2f}배")
-    report.append(f"마이크론 기준 PER: {m_pe:.2f}배")
-
-    return "\n".join(report)
+# ==========================================================
+# End of analysis.py
+# ==========================================================
