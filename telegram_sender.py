@@ -11,24 +11,23 @@ import requests
 # ==========================================================
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 
 # ==========================================================
-# Send Telegram
+# Telegram Send
 # ==========================================================
 
 def send_telegram_message(message):
 
     if not BOT_TOKEN:
         raise ValueError(
-            "TELEGRAM_BOT_TOKEN not found."
+            "GitHub Secret 'TELEGRAM_BOT_TOKEN' not found."
         )
 
     if not CHAT_ID:
         raise ValueError(
-            "TELEGRAM_CHAT_ID not found."
+            "GitHub Secret 'TELEGRAM_CHAT_ID' not found."
         )
 
     url = (
@@ -39,7 +38,6 @@ def send_telegram_message(message):
     payload = {
         "chat_id": CHAT_ID,
         "text": message,
-        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
 
@@ -49,42 +47,23 @@ def send_telegram_message(message):
         timeout=30,
     )
 
+    print("=" * 60)
+    print("Telegram API")
+    print("Status :", response.status_code)
+    print("Body   :", response.text)
+    print("=" * 60)
+
     response.raise_for_status()
 
     return response.json()
 
 
 # ==========================================================
-# Send Markdown
+# Test
 # ==========================================================
 
-def send_markdown(message):
+if __name__ == "__main__":
 
-    url = (
-        f"https://api.telegram.org/bot"
-        f"{BOT_TOKEN}/sendMessage"
+    send_telegram_message(
+        "Telegram Test Success!"
     )
-
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown",
-    }
-
-    response = requests.post(
-        url,
-        json=payload,
-        timeout=30,
-    )
-
-    print("Status:", response.status_code)
-    print("Response:", response.text)
-    
-    response.raise_for_status()
-
-    return response.json()
-
-
-# ==========================================================
-# End of telegram_sender.py
-# ==========================================================
