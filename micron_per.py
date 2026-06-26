@@ -1,8 +1,45 @@
 """
 micron_per.py
+Part 1
 """
 
+from __future__ import annotations
+
 import yfinance as yf
+
+
+# ==========================================================
+# Utility
+# ==========================================================
+
+def safe_float(value, default=0.0):
+
+    try:
+
+        if value is None:
+            return default
+
+        return float(value)
+
+    except Exception:
+
+        return default
+
+
+def get_info_value(info, *keys):
+
+    for key in keys:
+
+        value = info.get(key)
+
+        if value not in (
+            None,
+            "",
+        ):
+
+            return value
+
+    return 0
 
 
 # ==========================================================
@@ -17,51 +54,89 @@ def get_micron_data():
 
         info = ticker.info
 
-        hist = ticker.history(period="2d")
-
-        close_today = float(hist["Close"].iloc[-1])
-        close_yesterday = float(hist["Close"].iloc[-2])
-
-        change_pct = (
-            (close_today / close_yesterday) - 1
-        ) * 100
-
-        price = (
-            info.get("currentPrice")
-            or info.get("regularMarketPrice")
-            or 0
+        hist = ticker.history(
+            period="5d",
+            auto_adjust=False,
         )
 
-        per = (
-            info.get("forwardPE")
-            or info.get("trailingPE")
-            or 0
+        if len(hist) >= 2:
+
+            close_today = safe_float(
+                hist["Close"].iloc[-1]
+            )
+
+            close_yesterday = safe_float(
+                hist["Close"].iloc[-2]
+            )
+
+            if close_yesterday != 0:
+
+                change_pct = (
+                    (
+                        close_today
+                        - close_yesterday
+                    )
+                    / close_yesterday
+                ) * 100
+
+            else:
+
+                change_pct = 0.0
+
+        else:
+
+            change_pct = 0.0
+
+        price = safe_float(
+            get_info_value(
+                info,
+                "currentPrice",
+                "regularMarketPrice",
+            )
         )
 
-        eps = (
-            info.get("trailingEps")
-            or info.get("epsCurrentYear")
-            or 0
+        per = safe_float(
+            get_info_value(
+                info,
+                "forwardPE",
+                "trailingPE",
+            )
         )
 
-        revenue_growth = (
-            info.get("revenueGrowth")
-            or 0
+        eps = safe_float(
+            get_info_value(
+                info,
+                "trailingEps",
+                "epsCurrentYear",
+            )
         )
 
-        eps_growth = (
-            info.get("earningsGrowth")
-            or 0
+        revenue_growth = safe_float(
+            get_info_value(
+                info,
+                "revenueGrowth",
+            )
         )
 
-        roe = (
-            info.get("returnOnEquity")
-            or 0
+        eps_growth = safe_float(
+            get_info_value(
+                info,
+                "earningsGrowth",
+            )
         )
 
-        market_cap = (
-            info.get("marketCap")
-            or 0
+        roe = safe_float(
+            get_info_value(
+                info,
+                "returnOnEquity",
+            )
+        )
+
+        market_cap = safe_float(
+            get_info_value(
+                info,
+                "marketCap",
+            )
         )
 
         return {
@@ -70,30 +145,33 @@ def get_micron_data():
 
             "Ticker": "MU",
 
-            "Price": float(price),
+            "Price": round(price, 2),
 
             "ChangePct": round(
                 change_pct,
                 2,
             ),
 
-            "PER": float(per),
+            "PER": round(per, 2),
 
-            "EPS": float(eps),
+            "EPS": round(eps, 2),
 
-            "RevenueGrowth": float(
-                revenue_growth
+            "RevenueGrowth": round(
+                revenue_growth,
+                4,
             ),
 
-            "EPSGrowth": float(
-                eps_growth
+            "EPSGrowth": round(
+                eps_growth,
+                4,
             ),
 
-            "ROE": float(roe),
-
-            "MarketCap": float(
-                market_cap
+            "ROE": round(
+                roe,
+                4,
             ),
+
+            "MarketCap": market_cap,
 
         }
 
@@ -136,6 +214,15 @@ if __name__ == "__main__":
 
     data = get_micron_data()
 
-    for k, v in data.items():
+    print()
 
-        print(f"{k:15} : {v}")
+    for key, value in data.items():
+
+        print(
+            f"{key:15} : {value}"
+        )
+
+
+# ==========================================================
+# End of micron_per.py
+# ==========================================================
