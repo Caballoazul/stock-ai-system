@@ -3,3 +3,6 @@ pandas
 numpy
 requests
 tabulate
+lxml
+html5lib
+beautifulsoup4
