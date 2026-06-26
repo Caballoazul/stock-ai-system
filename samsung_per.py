@@ -72,18 +72,18 @@ def get_samsung_data():
             or 0
         )
 
-        preferred_market_cap = (
-            preferred_info.get("marketCap")
+        d_market_cap = (
+            d_info.get("marketCap")
             or 0
         )
 
         total_market_cap = (
             common_market_cap
-            + preferred_market_cap
+            + d_market_cap
         )
 
-        preferred_per = (
-            preferred_price / eps
+        d_per = (
+            d_price / eps
             if eps > 0
             else 0
         )
@@ -96,7 +96,7 @@ def get_samsung_data():
 
             "Price": float(common_price),
 
-            "PreferredPrice": float(
+            "dPrice": float(
                 preferred_price
             ),
 
