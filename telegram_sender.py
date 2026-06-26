@@ -22,7 +22,7 @@ def send_telegram_message(message):
 
     if not BOT_TOKEN:
         raise ValueError(
-            "GitHub Secret 'TELEGRAM_BOT_TOKEN' not found."
+            "GitHub Secret 'TELEGRAM_TOKEN' not found."
         )
 
     if not CHAT_ID:
