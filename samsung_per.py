@@ -1,8 +1,45 @@
 """
 samsung_per.py
+Part 1
 """
 
+from __future__ import annotations
+
 import yfinance as yf
+
+
+# ==========================================================
+# Utility
+# ==========================================================
+
+def safe_float(value, default=0.0):
+
+    try:
+
+        if value is None:
+            return default
+
+        return float(value)
+
+    except Exception:
+
+        return default
+
+
+def get_info_value(info, *keys):
+
+    for key in keys:
+
+        value = info.get(key)
+
+        if value not in (
+            None,
+            "",
+        ):
+
+            return value
+
+    return 0
 
 
 # ==========================================================
@@ -14,61 +51,103 @@ def get_samsung_data():
     try:
 
         common = yf.Ticker("005930.KS")
+
         preferred = yf.Ticker("005935.KS")
 
         common_info = common.info
+
         preferred_info = preferred.info
 
-        hist = common.history(period="2d")
-
-        close_today = float(hist["Close"].iloc[-1])
-        close_yesterday = float(hist["Close"].iloc[-2])
-
-        change_pct = (
-            (close_today / close_yesterday) - 1
-        ) * 100
-
-        price = (
-            common_info.get("currentPrice")
-            or common_info.get("regularMarketPrice")
-            or 0
+        hist = common.history(
+            period="5d",
+            auto_adjust=False,
         )
 
-        per = (
-            common_info.get("forwardPE")
-            or common_info.get("trailingPE")
-            or 0
+        if len(hist) >= 2:
+
+            close_today = safe_float(
+                hist["Close"].iloc[-1]
+            )
+
+            close_yesterday = safe_float(
+                hist["Close"].iloc[-2]
+            )
+
+            if close_yesterday != 0:
+
+                change_pct = (
+                    (
+                        close_today
+                        - close_yesterday
+                    )
+                    / close_yesterday
+                ) * 100
+
+            else:
+
+                change_pct = 0.0
+
+        else:
+
+            change_pct = 0.0
+
+        price = safe_float(
+            get_info_value(
+                common_info,
+                "currentPrice",
+                "regularMarketPrice",
+            )
         )
 
-        eps = (
-            common_info.get("trailingEps")
-            or common_info.get("epsCurrentYear")
-            or 0
+        per = safe_float(
+            get_info_value(
+                common_info,
+                "forwardPE",
+                "trailingPE",
+            )
         )
 
-        revenue_growth = (
-            common_info.get("revenueGrowth")
-            or 0
+        eps = safe_float(
+            get_info_value(
+                common_info,
+                "trailingEps",
+                "epsCurrentYear",
+            )
         )
 
-        eps_growth = (
-            common_info.get("earningsGrowth")
-            or 0
+        revenue_growth = safe_float(
+            get_info_value(
+                common_info,
+                "revenueGrowth",
+            )
         )
 
-        roe = (
-            common_info.get("returnOnEquity")
-            or 0
+        eps_growth = safe_float(
+            get_info_value(
+                common_info,
+                "earningsGrowth",
+            )
         )
 
-        common_market_cap = (
-            common_info.get("marketCap")
-            or 0
+        roe = safe_float(
+            get_info_value(
+                common_info,
+                "returnOnEquity",
+            )
         )
 
-        preferred_market_cap = (
-            preferred_info.get("marketCap")
-            or 0
+        common_market_cap = safe_float(
+            get_info_value(
+                common_info,
+                "marketCap",
+            )
+        )
+
+        preferred_market_cap = safe_float(
+            get_info_value(
+                preferred_info,
+                "marketCap",
+            )
         )
 
         total_market_cap = (
@@ -82,30 +161,33 @@ def get_samsung_data():
 
             "Ticker": "005930.KS",
 
-            "Price": float(price),
+            "Price": round(price, 2),
 
             "ChangePct": round(
                 change_pct,
                 2,
             ),
 
-            "PER": float(per),
+            "PER": round(per, 2),
 
-            "EPS": float(eps),
+            "EPS": round(eps, 2),
 
-            "RevenueGrowth": float(
-                revenue_growth
+            "RevenueGrowth": round(
+                revenue_growth,
+                4,
             ),
 
-            "EPSGrowth": float(
-                eps_growth
+            "EPSGrowth": round(
+                eps_growth,
+                4,
             ),
 
-            "ROE": float(roe),
-
-            "MarketCap": float(
-                total_market_cap
+            "ROE": round(
+                roe,
+                4,
             ),
+
+            "MarketCap": total_market_cap,
 
         }
 
@@ -148,6 +230,15 @@ if __name__ == "__main__":
 
     data = get_samsung_data()
 
-    for k, v in data.items():
+    print()
 
-        print(f"{k:15} : {v}")
+    for key, value in data.items():
+
+        print(
+            f"{key:15} : {value}"
+        )
+
+
+# ==========================================================
+# End of samsung_per.py
+# ==========================================================
