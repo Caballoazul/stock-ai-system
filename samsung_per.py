@@ -28,15 +28,9 @@ def get_samsung_data():
             (close_today / close_yesterday) - 1
         ) * 100
 
-        common_price = (
+        price = (
             common_info.get("currentPrice")
             or common_info.get("regularMarketPrice")
-            or 0
-        )
-
-        preferred_price = (
-            preferred_info.get("currentPrice")
-            or preferred_info.get("regularMarketPrice")
             or 0
         )
 
@@ -72,20 +66,14 @@ def get_samsung_data():
             or 0
         )
 
-        d_market_cap = (
-            d_info.get("marketCap")
+        preferred_market_cap = (
+            preferred_info.get("marketCap")
             or 0
         )
 
         total_market_cap = (
             common_market_cap
-            + d_market_cap
-        )
-
-        d_per = (
-            d_price / eps
-            if eps > 0
-            else 0
+            + preferred_market_cap
         )
 
         return {
@@ -94,11 +82,7 @@ def get_samsung_data():
 
             "Ticker": "005930.KS",
 
-            "Price": float(common_price),
-
-            "dPrice": float(
-                preferred_price
-            ),
+            "Price": float(price),
 
             "ChangePct": round(
                 change_pct,
@@ -106,11 +90,6 @@ def get_samsung_data():
             ),
 
             "PER": float(per),
-
-            "PreferredPER": round(
-                preferred_per,
-                2,
-            ),
 
             "EPS": float(eps),
 
@@ -144,13 +123,9 @@ def get_samsung_data():
 
             "Price": 0,
 
-            "PreferredPrice": 0,
-
             "ChangePct": 0,
 
             "PER": 0,
-
-            "PreferredPER": 0,
 
             "EPS": 0,
 
@@ -175,4 +150,4 @@ if __name__ == "__main__":
 
     for k, v in data.items():
 
-        print(f"{k:18} : {v}")
+        print(f"{k:15} : {v}")
