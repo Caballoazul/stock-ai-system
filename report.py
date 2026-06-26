@@ -3,6 +3,10 @@ report.py
 Part 1
 """
 
+from __future__ import annotations
+
+from datetime import datetime
+
 import pandas as pd
 
 
@@ -13,6 +17,7 @@ import pandas as pd
 def format_price(value):
 
     if pd.isna(value):
+
         return "-"
 
     return f"{value:,.0f}"
@@ -21,6 +26,7 @@ def format_price(value):
 def format_percent(value):
 
     if pd.isna(value):
+
         return "-"
 
     return f"{value:.2f}%"
@@ -29,9 +35,27 @@ def format_percent(value):
 def format_number(value):
 
     if pd.isna(value):
+
         return "-"
 
     return f"{value:.2f}"
+
+
+def format_market_cap(value):
+
+    if pd.isna(value):
+
+        return "-"
+
+    if value >= 1_000_000_000_000:
+
+        return f"{value/1_000_000_000_000:.2f}T"
+
+    if value >= 1_000_000_000:
+
+        return f"{value/1_000_000_000:.2f}B"
+
+    return f"{value:,.0f}"
 
 
 # ==========================================================
@@ -42,62 +66,72 @@ def build_display_table(df):
 
     table = df.copy()
 
-    if "Price" in table.columns:
-        table["Price"] = table["Price"].apply(
-            format_price
-        )
+    columns = {
 
-    if "TargetPrice" in table.columns:
-        table["TargetPrice"] = table[
-            "TargetPrice"
-        ].apply(
-            format_price
-        )
+        "Price": format_price,
 
-    if "PER" in table.columns:
-        table["PER"] = table["PER"].apply(
-            format_number
-        )
+        "TargetPrice": format_price,
 
-    if "PERGap(%)" in table.columns:
-        table["PERGap(%)"] = table[
-            "PERGap(%)"
-        ].apply(
-            format_percent
-        )
+        "PER": format_number,
 
-    if "Upside(%)" in table.columns:
-        table["Upside(%)"] = table[
-            "Upside(%)"
-        ].apply(
-            format_percent
-        )
+        "EPS": format_number,
 
-    if "QuantScore" in table.columns:
-        table["QuantScore"] = table[
-            "QuantScore"
-        ].apply(
-            format_number
-        )
+        "ROE": format_percent,
+
+        "RevenueGrowth": format_percent,
+
+        "EPSGrowth": format_percent,
+
+        "PERGap(%)": format_percent,
+
+        "Upside(%)": format_percent,
+
+        "QuantScore": format_number,
+
+        "MarketCap": format_market_cap,
+
+    }
+
+    for column, formatter in columns.items():
+
+        if column in table.columns:
+
+            table[column] = table[column].apply(
+                formatter
+            )
 
     return table
 
 
 # ==========================================================
-# Console Print
+# Console Report
 # ==========================================================
 
 def print_report(df):
 
     table = build_display_table(df)
 
-    print("=" * 90)
-    print(" Semiconductor PER Analysis ")
-    print("=" * 90)
+    print("=" * 100)
 
-    print(table.to_string(index=False))
+    print(
+        " Semiconductor PER Analysis Report "
+    )
 
-    print("=" * 90)
+    print(
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    )
+
+    print("=" * 100)
+
+    print(
+        table.to_string(
+            index=False
+        )
+    )
+
+    print("=" * 100)
 
 # ==========================================================
 # Markdown Report
@@ -105,16 +139,35 @@ def print_report(df):
 
 def make_markdown_report(df):
 
-    table = build_display_table(df)
+    table = build_display_table(
+        df
+    )
 
-    lines = []
+    report = []
 
-    lines.append("# Semiconductor PER Report")
-    lines.append("")
-    lines.append(table.to_markdown(index=False))
-    lines.append("")
+    report.append(
+        "# Semiconductor PER Report"
+    )
 
-    return "\n".join(lines)
+    report.append("")
+
+    report.append(
+        f"Generated : {datetime.now():%Y-%m-%d %H:%M}"
+    )
+
+    report.append("")
+
+    report.append(
+        table.to_markdown(
+            index=False
+        )
+    )
+
+    report.append("")
+
+    return "\n".join(
+        report
+    )
 
 
 # ==========================================================
@@ -124,60 +177,76 @@ def make_markdown_report(df):
 def make_telegram_message(df):
 
     if df.empty:
+
         return "No data."
 
     best = df.iloc[0]
 
     msg = []
 
-    msg.append("📊 반도체 PER 투자 리포트")
+    msg.append(
+        "📊 반도체 PER 투자 리포트"
+    )
+
     msg.append("")
-    msg.append(f"🏆 1위 : {best['Company']}")
-    msg.append(f"PER : {best['PER']:.2f}")
-    msg.append(f"Quant Score : {best['QuantScore']:.2f}")
-    msg.append(f"Target Price : {best['TargetPrice']:,.0f}")
-    msg.append(f"Upside : {best['Upside(%)']:.2f}%")
-    msg.append(f"Opinion : {best['Opinion']}")
+
+    msg.append(
+        datetime.now().strftime(
+            "🕒 %Y-%m-%d %H:%M"
+        )
+    )
+
     msg.append("")
-    msg.append("전체 순위")
-    msg.append("-----------------------")
+
+    msg.append(
+        f"🏆 투자 1위 : {best['Company']}"
+    )
+
+    msg.append(
+        f"PER : {best['PER']:.2f}"
+    )
+
+    msg.append(
+        f"목표가 : {best['TargetPrice']:,.0f}"
+    )
+
+    msg.append(
+        f"상승여력 : {best['Upside(%)']:.2f}%"
+    )
+
+    msg.append(
+        f"퀀트점수 : {best['QuantScore']:.2f}"
+    )
+
+    msg.append(
+        f"투자의견 : {best['Opinion']}"
+    )
+
+    msg.append("")
+
+    msg.append(
+        "📈 전체 순위"
+    )
+
+    msg.append(
+        "-------------------------"
+    )
 
     for _, row in df.iterrows():
 
         msg.append(
+
             f"{int(row['Rank'])}. "
-            f"{row['Company']} "
-            f"({row['QuantScore']:.2f})"
+
+            f"{row['Company']}"
+
+            f" | Score {row['QuantScore']:.2f}"
+
         )
 
-    return "\n".join(msg)
-
-
-# ==========================================================
-# HTML Report
-# ==========================================================
-
-def make_html_report(df):
-
-    table = build_display_table(df)
-
-    html = []
-
-    html.append("<html>")
-    html.append("<body>")
-    html.append("<h2>Semiconductor PER Report</h2>")
-
-    html.append(
-        table.to_html(
-            index=False,
-            border=1,
-        )
+    return "\n".join(
+        msg
     )
-
-    html.append("</body>")
-    html.append("</html>")
-
-    return "\n".join(html)
 
 
 # ==========================================================
