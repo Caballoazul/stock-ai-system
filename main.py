@@ -15,7 +15,6 @@ from analysis import (
 
 from report import (
     print_report,
-    make_markdown_report,
     make_html_report,
     make_telegram_message,
 )
@@ -60,10 +59,6 @@ def main():
 
     print_report(result)
 
-    markdown_report = make_markdown_report(
-        result
-    )
-
     html_report = make_html_report(
         result
     )
@@ -71,9 +66,6 @@ def main():
     telegram_message = make_telegram_message(
         result
     )
-
-    print()
-    print(markdown_report)
 
     print()
     print("Best Company")
