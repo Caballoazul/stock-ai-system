@@ -563,15 +563,55 @@ def build_ai_report(df):
 
     report.append("")
 
+   company_name = {
+
+    "Samsung": "삼성전자",
+
+    "SK Hynix": "SK하이닉스",
+
+    "Micron": "Micron",
+
+    }
+
     report.append(
 
-        f"가장 저평가 : {best['Company']}"
+        f"Micron PER : {format_number(micron['PER'])}"
+
+    )
+
+    report.append("")
+
+    report.append(
+
+        f"삼성 할인율 : "
+
+        f"{format_percent(samsung['PERGap(%)'])}"
 
     )
 
     report.append(
 
-        f"가장 고평가 : {worst['Company']}"
+        f"SK 할인율 : "
+
+        f"{format_percent(sk['PERGap(%)'])}"
+
+    )
+
+    report.append("")
+
+    report.append(
+
+        f"가장 저평가 : "
+
+        f"{company_name[best['Company']]}"
+
+    )
+
+    report.append(
+
+        f"가장 고평가 : "
+
+        f"{company_name[worst['Company']]}"
 
     )
 
@@ -604,17 +644,18 @@ def build_ai_report(df):
 
     report.append(
 
-        f"Micron PER "
+    f"Micron PER "
 
-        f"{format_number(micron['PER'])}배를 "
+    f"{format_number(micron['PER'])}배를 "
 
-        f"기준으로 판단할 때 "
+    f"기준으로 비교하면 "
 
-        f"{best['Company']}의 "
+    f"{company_name[best['Company']]}의 "
 
-        f"상대가치가 가장 높습니다."
+    f"상대가치가 가장 높습니다."
 
     )
+    
 
     return "\n".join(report)
 
