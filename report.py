@@ -215,13 +215,29 @@ def build_per_scenario_text(company):
 
     report.append("")
 
-    scenarios = company["PERScenario"]
+scenarios = company["PERScenario"]
 
-    for _, row in scenarios.iterrows():
+for _, row in scenarios.iterrows():
+
+    per = row["PER"]
+
+    if abs(per - company["ReferencePER"]) < 0.01:
 
         report.append(
 
-            f"PER {row['PER']:.1f}"
+            f"PER {per:.2f} (Micron)"
+
+            f"    적정주가 "
+
+            f"{format_price(row['TargetPrice'])}"
+
+        )
+
+    else:
+
+        report.append(
+
+            f"PER {per:.1f}"
 
             f"    적정주가 "
 
