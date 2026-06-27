@@ -22,6 +22,7 @@ def format_price(value):
 
     return f"{value:,.0f}원"
 
+
 def format_usd(value):
 
     if pd.isna(value):
@@ -79,7 +80,9 @@ def get_company(
 ):
 
     row = df[
+
         df["Company"] == company
+
     ]
 
     if row.empty:
@@ -88,6 +91,7 @@ def get_company(
 
     return row.iloc[0]
 
+
 # ==========================================================
 # Market Report
 # ==========================================================
@@ -95,88 +99,145 @@ def get_company(
 def build_market_report(df):
 
     micron = get_company(
+
         df,
+
         "Micron",
+
     )
 
     samsung = get_company(
+
         df,
+
         "Samsung",
+
     )
 
     sk = get_company(
+
         df,
+
         "SK Hynix",
+
     )
 
     report = []
 
     report.append(
+
         "📊 반도체 PER 투자 리포트"
+
     )
 
     report.append(
+
         "━━━━━━━━━━━━━━━━━━━━━━━━"
+
     )
 
     report.append("")
 
     report.append(
+
         f"📅 {datetime.now():%Y-%m-%d %H:%M}"
+
     )
 
     report.append("")
 
-    report.append("🇺🇸 Micron")
+    report.append(
 
-    report.append("━━━━━━━━━━━━━━━━")
+        "🇺🇸 Micron"
+
+    )
 
     report.append(
+
+        "━━━━━━━━━━━━━━━━"
+
+    )
+
+    report.append(
+
         f"PER         {format_number(micron['PER'])}"
+
     )
 
     report.append(
+
         f"주가        {format_usd(micron['Price'])}"
+
     )
 
     report.append(
+
         f"전일대비    {format_percent(micron['ChangePct'])}"
+
     )
 
     report.append("")
 
-    report.append("🇰🇷 삼성전자")
+    report.append(
 
-    report.append("━━━━━━━━━━━━━━━━")
+        "🇰🇷 삼성전자"
+
+    )
 
     report.append(
+
+        "━━━━━━━━━━━━━━━━"
+
+    )
+
+    report.append(
+
         f"PER         {format_number(samsung['PER'])}"
+
     )
 
     report.append(
+
         f"주가        {format_price(samsung['Price'])}"
+
     )
 
     report.append(
+
         f"보정 PER    {format_number(samsung['AdjustedPER'])}"
+
     )
 
     report.append("")
 
-    report.append("🇰🇷 SK하이닉스")
+    report.append(
 
-    report.append("━━━━━━━━━━━━━━━━")
+        "🇰🇷 SK하이닉스"
+
+    )
 
     report.append(
+
+        "━━━━━━━━━━━━━━━━"
+
+    )
+
+    report.append(
+
         f"PER         {format_number(sk['PER'])}"
+
     )
 
     report.append(
+
         f"주가        {format_price(sk['Price'])}"
+
     )
 
     report.append(
+
         f"전일대비    {format_percent(sk['ChangePct'])}"
+
     )
 
     return "\n".join(report)
@@ -205,45 +266,63 @@ def build_per_scenario_text(company):
 
     report.append("")
 
-    report.append("📊 PER 시나리오")
+    report.append(
 
-    report.append("━━━━━━━━━━━━━━━━")
+        "📊 PER 시나리오"
+
+    )
+
+    report.append(
+
+        "━━━━━━━━━━━━━━━━"
+
+    )
 
     report.append("")
 
-    report.append(company_name)
+    report.append(
+
+        company_name
+
+    )
 
     report.append("")
 
-scenarios = company["PERScenario"]
+    scenarios = company["PERScenario"]
 
-for _, row in scenarios.iterrows():
+    for _, row in scenarios.iterrows():
 
-    per = row["PER"]
+        per = row["PER"]
 
-    if abs(per - company["ReferencePER"]) < 0.01:
+        if abs(
 
-        report.append(
+            per
 
-            f"PER {per:.2f} (Micron)"
+            - company["ReferencePER"]
 
-            f"    적정주가 "
+        ) < 0.01:
 
-            f"{format_price(row['TargetPrice'])}"
+            report.append(
 
-        )
+                f"PER {per:.2f} (Micron)"
 
-    else:
+                f"    적정주가 "
 
-        report.append(
+                f"{format_price(row['TargetPrice'])}"
 
-            f"PER {per:.1f}"
+            )
 
-            f"    적정주가 "
+        else:
 
-            f"{format_price(row['TargetPrice'])}"
+            report.append(
 
-        )
+                f"PER {per:.1f}"
+
+                f"    적정주가 "
+
+                f"{format_price(row['TargetPrice'])}"
+
+            )
 
     return report
 
@@ -306,6 +385,18 @@ def build_valuation_report(df):
 
     report.append(
 
+        f"현재 PER    {format_number(samsung['PER'])}"
+
+    )
+
+    report.append(
+
+        f"Micron PER  {format_number(samsung['ReferencePER'])}"
+
+    )
+
+    report.append(
+
         f"목표가      {format_price(samsung['TargetPrice'])}"
 
     )
@@ -316,12 +407,6 @@ def build_valuation_report(df):
 
     )
 
-    report.append(
-
-        f"Micron PER  {format_number(samsung['ReferencePER'])}"
-
-    )
-    
     report.extend(
 
         build_per_scenario_text(
@@ -362,6 +447,18 @@ def build_valuation_report(df):
 
     report.append(
 
+        f"현재 PER    {format_number(sk['PER'])}"
+
+    )
+
+    report.append(
+
+        f"Micron PER  {format_number(sk['ReferencePER'])}"
+
+    )
+
+    report.append(
+
         f"목표가      {format_price(sk['TargetPrice'])}"
 
     )
@@ -372,12 +469,6 @@ def build_valuation_report(df):
 
     )
 
-    report.append(
-
-        f"Micron PER  {format_number(sk['ReferencePER'])}"
-
-    )
-    
     report.extend(
 
         build_per_scenario_text(
@@ -388,7 +479,12 @@ def build_valuation_report(df):
 
     )
 
-    return "\n".join(report)
+    return "\n".join(
+
+        report
+
+    )
+
 
 # ==========================================================
 # Quant Report
@@ -420,27 +516,21 @@ def build_quant_report(df):
 
     )
 
+    company_map = {
+
+        "Micron": "Micron",
+
+        "Samsung": "삼성전자",
+
+        "SK Hynix": "SK하이닉스",
+
+    }
+
     for _, row in ranking.iterrows():
-
-        company_name = {
-
-            "Micron": "Micron",
-
-            "Samsung": "삼성전자",
-
-            "SK Hynix": "SK하이닉스",
-
-        }.get(
-
-            row["Company"],
-
-            row["Company"],
-
-        )
 
         report.append(
 
-            f"■ {company_name}"
+            f"■ {company_map[row['Company']]}"
 
         )
 
@@ -482,10 +572,6 @@ def build_quant_report(df):
 
         report.append("")
 
-
-    return "\n".join(report)
-
-
 # ==========================================================
 # AI Report
 # ==========================================================
@@ -493,35 +579,50 @@ def build_quant_report(df):
 def build_ai_report(df):
 
     micron = get_company(
+
         df,
+
         "Micron",
+
     )
 
     samsung = get_company(
+
         df,
+
         "Samsung",
+
     )
 
     sk = get_company(
+
         df,
+
         "SK Hynix",
+
     )
 
-    best = df.sort_values(
+    ranking = df.sort_values(
 
         by="QuantScore",
 
         ascending=False,
 
-    ).iloc[0]
+    )
 
-    worst = df.sort_values(
+    best = ranking.iloc[0]
 
-        by="QuantScore",
+    worst = ranking.iloc[-1]
 
-        ascending=True,
+    company_map = {
 
-    ).iloc[0]
+        "Micron": "Micron",
+
+        "Samsung": "삼성전자",
+
+        "SK Hynix": "SK하이닉스",
+
+    }
 
     report = []
 
@@ -538,40 +639,6 @@ def build_ai_report(df):
     )
 
     report.append("")
-
-    report.append("오늘 핵심")
-
-    report.append("")
-
-    report.append(
-
-        f"① Micron PER : {format_number(micron['PER'])}"
-
-    )
-
-    report.append(
-
-        f"② 삼성 할인율 : {format_percent(samsung['PERGap(%)'])}"
-
-    )
-
-    report.append(
-
-        f"③ SK 할인율 : {format_percent(sk['PERGap(%)'])}"
-
-    )
-
-    report.append("")
-
-   company_name = {
-
-    "Samsung": "삼성전자",
-
-    "SK Hynix": "SK하이닉스",
-
-    "Micron": "Micron",
-
-    }
 
     report.append(
 
@@ -603,7 +670,7 @@ def build_ai_report(df):
 
         f"가장 저평가 : "
 
-        f"{company_name[best['Company']]}"
+        f"{company_map[best['Company']]}"
 
     )
 
@@ -611,16 +678,7 @@ def build_ai_report(df):
 
         f"가장 고평가 : "
 
-        f"{company_name[worst['Company']]}"
-
-    )
-
-    report.append("")
-
-
-    report.append(
-
-        "오늘의 시장 평가"
+        f"{company_map[worst['Company']]}"
 
     )
 
@@ -628,7 +686,7 @@ def build_ai_report(df):
 
     report.append(
 
-        best["Opinion"]
+        f"투자 의견 : {best['Opinion']}"
 
     )
 
@@ -644,21 +702,23 @@ def build_ai_report(df):
 
     report.append(
 
-    f"Micron PER "
+        f"Micron PER "
 
-    f"{format_number(micron['PER'])}배를 "
+        f"{format_number(micron['PER'])}배를 "
 
-    f"기준으로 비교하면 "
+        f"기준으로 비교하면 "
 
-    f"{company_name[best['Company']]}의 "
+        f"{company_map[best['Company']]}의 "
 
-    f"상대가치가 가장 높습니다."
+        f"상대가치가 가장 높습니다."
 
     )
-    
 
-    return "\n".join(report)
+    return "\n".join(
 
+        report
+
+    )
 
 # ==========================================================
 # Telegram
@@ -685,9 +745,15 @@ def make_telegram_messages(df):
 
 def print_report(df):
 
+    messages = make_telegram_messages(
+
+        df
+
+    )
+
     for idx, message in enumerate(
 
-        make_telegram_messages(df),
+        messages,
 
         start=1,
 
@@ -695,13 +761,36 @@ def print_report(df):
 
         print("=" * 80)
 
-        print(f"Report {idx}")
+        print(
+
+            f"Report {idx}"
+
+        )
 
         print("=" * 80)
 
         print(message)
 
         print()
+
+
+# ==========================================================
+# Backward Compatibility
+# ==========================================================
+
+def make_telegram_message(df):
+
+    """
+
+    기존 main.py와의 호환을 위한 함수
+
+    """
+
+    return "\n\n".join(
+
+        make_telegram_messages(df)
+
+    )
 
 
 # ==========================================================
