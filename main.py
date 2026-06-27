@@ -14,7 +14,7 @@ from analysis import (
 
 from report import (
     print_report,
-    make_telegram_message,
+    make_telegram_messages,
 )
 
 from telegram_sender import (
@@ -46,7 +46,9 @@ def load_stock_data():
 def main():
 
     print("=" * 80)
+
     print("Semiconductor PER Analysis")
+
     print("=" * 80)
 
     stock_data = load_stock_data()
@@ -67,27 +69,42 @@ def main():
         result
     )
 
-    telegram_message = make_telegram_message(
+    messages = make_telegram_messages(
         result
     )
 
     print()
-    print("Best Company :", summary["BestCompany"])
-    print("Quant Score  :", summary["BestScore"])
+
+    print(
+        f"Best Company : {summary['BestCompany']}"
+    )
+
+    print(
+        f"Quant Score  : {summary['BestScore']}"
+    )
 
     try:
 
-        send_telegram_message(
-            telegram_message
-        )
+        for message in messages:
+
+            send_telegram_message(
+                message
+            )
 
         print()
-        print("Telegram Send : OK")
+
+        print(
+            "Telegram Send : OK"
+        )
 
     except Exception as e:
 
         print()
-        print("Telegram Send : FAIL")
+
+        print(
+            "Telegram Send : FAIL"
+        )
+
         print(e)
 
     return result
