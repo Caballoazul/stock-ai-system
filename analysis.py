@@ -12,20 +12,48 @@ import pandas as pd
 
 
 # ==========================================================
+# PER Scenario
+# ==========================================================
+
+PER_LEVELS = [
+
+    5.0,
+
+    6.0,
+
+    7.0,
+
+    8.0,
+
+    9.0,
+
+    10.0,
+
+    11.0,
+
+]
+
+
+# ==========================================================
 # Utility
 # ==========================================================
 
 def safe_float(
+
     value,
+
     default=np.nan,
+
 ):
 
     try:
 
         if value is None:
+
             return default
 
         if value == "":
+
             return default
 
         return float(value)
@@ -36,33 +64,30 @@ def safe_float(
 
 
 def safe_divide(
-    numerator,
-    denominator,
+
+    a,
+
+    b,
+
 ):
 
-    numerator = safe_float(numerator)
-    denominator = safe_float(denominator)
+    a = safe_float(a)
 
-    if pd.isna(numerator):
+    b = safe_float(b)
+
+    if pd.isna(a):
+
         return np.nan
 
-    if pd.isna(denominator):
+    if pd.isna(b):
+
         return np.nan
 
-    if denominator == 0:
+    if b == 0:
+
         return np.nan
 
-    return numerator / denominator
-
-
-def safe_percent(value):
-
-    value = safe_float(value)
-
-    if pd.isna(value):
-        return np.nan
-
-    return value * 100
+    return a / b
 
 
 # ==========================================================
@@ -70,7 +95,9 @@ def safe_percent(value):
 # ==========================================================
 
 def build_quant_dataframe(
+
     stock_data: List[Dict],
+
 ):
 
     df = pd.DataFrame(stock_data)
@@ -79,7 +106,7 @@ def build_quant_dataframe(
 
         "Price",
 
-        "MarketCap",
+        "ChangePct",
 
         "PER",
 
@@ -91,7 +118,7 @@ def build_quant_dataframe(
 
         "EPSGrowth",
 
-        "ChangePct",
+        "MarketCap",
 
     ]
 
@@ -100,30 +127,37 @@ def build_quant_dataframe(
         if column in df.columns:
 
             df[column] = pd.to_numeric(
+
                 df[column],
+
                 errors="coerce",
+
             )
 
     return df
 
 
 # ==========================================================
-# EPS
+# Reference PER
 # ==========================================================
 
-def calc_eps(
+def get_reference_per(df):
 
-    price,
+    micron = df[
 
-    per,
+        df["Company"] == "Micron"
 
-):
+    ]
 
-    return safe_divide(
-        price,
-        per,
+    if micron.empty:
+
+        return np.nan
+
+    return float(
+
+        micron.iloc[0]["PER"]
+
     )
-
 
 # ==========================================================
 # Target Price
@@ -131,7 +165,7 @@ def calc_eps(
 
 def calc_target_price(
 
-    current_price,
+    price,
 
     current_per,
 
@@ -139,9 +173,9 @@ def calc_target_price(
 
 ):
 
-    eps = calc_eps(
+    eps = safe_divide(
 
-        current_price,
+        price,
 
         current_per,
 
@@ -152,63 +186,6 @@ def calc_target_price(
         return np.nan
 
     return eps * target_per
-
-# ==========================================================
-# PER GAP
-# ==========================================================
-
-def calc_per_gap(
-
-    current_per,
-
-    target_per,
-
-):
-
-    current_per = safe_float(
-        current_per
-    )
-
-    target_per = safe_float(
-        target_per
-    )
-
-    if pd.isna(current_per):
-
-        return np.nan
-
-    if current_per <= 0:
-
-        return np.nan
-
-    return (
-        (target_per / current_per) - 1
-    ) * 100
-
-
-# ==========================================================
-# Reference PER
-# ==========================================================
-
-def get_reference_per(
-
-    df,
-
-    reference="Micron",
-
-):
-
-    ref = df[
-        df["Company"] == reference
-    ]
-
-    if ref.empty:
-
-        return None
-
-    return safe_float(
-        ref.iloc[0]["PER"]
-    )
 
 
 # ==========================================================
@@ -221,37 +198,11 @@ def build_per_scenarios(
 
     current_per,
 
-    target_per,
-
-    step=0.5,
-
 ):
 
-    current_price = safe_float(
-        current_price
-    )
+    rows = []
 
-    current_per = safe_float(
-        current_per
-    )
-
-    target_per = safe_float(
-        target_per
-    )
-
-    if pd.isna(current_price):
-
-        return pd.DataFrame()
-
-    if pd.isna(current_per):
-
-        return pd.DataFrame()
-
-    if current_per <= 0:
-
-        return pd.DataFrame()
-
-    eps = calc_eps(
+    eps = safe_divide(
 
         current_price,
 
@@ -259,51 +210,30 @@ def build_per_scenarios(
 
     )
 
-    start = min(
-        current_per,
-        target_per,
-    )
+    for per in PER_LEVELS:
 
-    end = max(
-        current_per,
-        target_per,
-    )
+        target_price = eps * per
 
-    rows = []
+        rows.append(
 
-    for per in np.arange(
+            {
 
-        start,
+                "PER": per,
 
-        end + step,
+                "TargetPrice": round(
 
-        step,
+                    target_price,
 
-    ):
+                    0,
 
-        target = eps * per
+                ),
 
-        upside = (
-            (
-                target
-                / current_price
-            ) - 1
-        ) * 100
+            }
 
-        rows.append({
-
-            "PER": round(per, 2),
-
-            "TargetPrice": round(target),
-
-            "Upside(%)": round(
-                upside,
-                2,
-            ),
-
-        })
+        )
 
     return pd.DataFrame(rows)
+
 
 # ==========================================================
 # PER Compare
@@ -317,15 +247,63 @@ def build_per_compare(df):
         result
     )
 
-    if micron_per is None:
-
-        return result
-
     result["ReferencePER"] = micron_per
 
-    result["PERGap(%)"] = result["PER"].apply(
+    result["AdjustedPER"] = micron_per
 
-        lambda per: calc_per_gap(
+    result["PERGap(%)"] = np.nan
+
+    result["TargetPrice"] = np.nan
+
+    result["Upside(%)"] = np.nan
+
+    result["PERScenario"] = None
+
+    for idx, row in result.iterrows():
+
+        price = safe_float(
+
+            row["Price"]
+
+        )
+
+        per = safe_float(
+
+            row["PER"]
+
+        )
+
+        if pd.isna(price):
+
+            continue
+
+        if pd.isna(per):
+
+            continue
+
+        if per <= 0:
+
+            continue
+
+        gap = (
+
+            (micron_per - per)
+
+            / micron_per
+
+        ) * 100
+
+        result.loc[
+            idx,
+            "PERGap(%)"
+        ] = round(
+            gap,
+            2,
+        )
+
+        target = calc_target_price(
+
+            price,
 
             per,
 
@@ -333,156 +311,30 @@ def build_per_compare(df):
 
         )
 
-    )
-
-    result["TargetPrice"] = result.apply(
-
-        lambda row: calc_target_price(
-
-            row["Price"],
-
-            row["PER"],
-
-            micron_per,
-
-        ),
-
-        axis=1,
-
-    )
-
-    result["Upside(%)"] = (
-
-        (
-
-            result["TargetPrice"]
-
-            / result["Price"]
-
-        ) - 1
-
-    ) * 100
-
-    return result
-
-
-# ==========================================================
-# Investment Opinion
-# ==========================================================
-
-def investment_opinion(
-
-    upside,
-
-):
-
-    upside = safe_float(
-        upside
-    )
-
-    if pd.isna(upside):
-
-        return "N/A"
-
-    if upside >= 30:
-
-        return "★★★★★"
-
-    if upside >= 15:
-
-        return "★★★★☆"
-
-    if upside >= 5:
-
-        return "★★★☆☆"
-
-    if upside >= -5:
-
-        return "★★☆☆☆"
-
-    return "★☆☆☆☆"
-
-
-# ==========================================================
-# Normalize Score
-# ==========================================================
-
-def normalize_score(
-
-    value,
-
-    minimum,
-
-    maximum,
-
-):
-
-    value = safe_float(value)
-
-    if pd.isna(value):
-
-        return np.nan
-
-    if maximum == minimum:
-
-        return 50.0
-
-    score = (
-
-        (value - minimum)
-
-        / (maximum - minimum)
-
-    ) * 100
-
-    score = max(
-        score,
-        0,
-    )
-
-    score = min(
-        score,
-        100,
-    )
-
-    return round(
-        score,
-        2,
-    )
-
-# ==========================================================
-# PER Score
-# ==========================================================
-
-def calculate_per_score(
-
-    df,
-
-):
-
-    per_min = df["PER"].min()
-
-    per_max = df["PER"].max()
-
-    def score(per):
-
-        per = safe_float(per)
-
-        if pd.isna(per):
-
-            return np.nan
-
-        if per_max == per_min:
-
-            return 50.0
-
-        return round(
+        result.loc[
+            idx,
+            "TargetPrice"
+        ] = round(
+            target,
+            0,
+        )
+
+        result.loc[
+            idx,
+            "Upside(%)"
+        ] = round(
 
             (
 
-                (per_max - per)
+                (
 
-                / (per_max - per_min)
+                    target
+
+                    / price
+
+                )
+
+                - 1
 
             ) * 100,
 
@@ -490,91 +342,150 @@ def calculate_per_score(
 
         )
 
-    return df["PER"].apply(score)
+        result.at[
+            idx,
+            "PERScenario"
+        ] = build_per_scenarios(
+
+            price,
+
+            per,
+
+        )
+
+    return result
+
+
+# ==========================================================
+# PER Score
+# ==========================================================
+
+def calculate_per_score(df):
+
+    result = df.copy()
+
+    per_min = result["PER"].min()
+
+    per_max = result["PER"].max()
+
+    scores = []
+
+    for per in result["PER"]:
+
+        if pd.isna(per):
+
+            scores.append(np.nan)
+
+            continue
+
+        if per_max == per_min:
+
+            scores.append(50.0)
+
+            continue
+
+        score = (
+
+            (per_max - per)
+
+            / (per_max - per_min)
+
+        ) * 100
+
+        scores.append(
+
+            round(score, 2)
+
+        )
+
+    result["PERScore"] = scores
+
+    return result
 
 
 # ==========================================================
 # Growth Score
 # ==========================================================
 
-def calculate_growth_score(
+def calculate_growth_score(df):
 
-    series,
+    result = df.copy()
 
-):
+    score_columns = [
 
-    minimum = series.min()
+        ("ROE", "ROEScore"),
 
-    maximum = series.max()
+        ("RevenueGrowth", "RevenueScore"),
 
-    return series.apply(
+        ("EPSGrowth", "EPSScore"),
 
-        lambda value: normalize_score(
+    ]
 
-            value,
+    for column, score_name in score_columns:
 
-            minimum,
+        minimum = result[column].min()
 
-            maximum,
+        maximum = result[column].max()
 
-        )
+        scores = []
 
-    )
+        for value in result[column]:
 
+            if pd.isna(value):
+
+                scores.append(np.nan)
+
+                continue
+
+            if minimum == maximum:
+
+                scores.append(50.0)
+
+                continue
+
+            score = (
+
+                (value - minimum)
+
+                / (maximum - minimum)
+
+            ) * 100
+
+            scores.append(
+
+                round(score, 2)
+
+            )
+
+        result[score_name] = scores
+
+    return result
 
 # ==========================================================
 # Quant Score
 # ==========================================================
 
-def calculate_quant_score(
+def calculate_quant_score(df):
 
-    df,
+    result = calculate_per_score(
+        df
+    )
 
-):
-
-    result = df.copy()
-
-    result["PERScore"] = calculate_per_score(
+    result = calculate_growth_score(
         result
-    )
-
-    result["EPSScore"] = calculate_growth_score(
-        result["EPSGrowth"]
-    )
-
-    result["RevenueScore"] = calculate_growth_score(
-        result["RevenueGrowth"]
-    )
-
-    result["ROEScore"] = calculate_growth_score(
-        result["ROE"]
     )
 
     result["QuantScore"] = (
 
         result["PERScore"] * 0.40
 
-        + result["EPSScore"] * 0.25
+        + result["ROEScore"] * 0.20
 
         + result["RevenueScore"] * 0.20
 
-        + result["ROEScore"] * 0.15
+        + result["EPSScore"] * 0.20
 
     ).round(2)
-
-    return result
-
-# ==========================================================
-# Rank
-# ==========================================================
-
-def append_rank(
-
-    df,
-
-):
-
-    result = df.copy()
 
     result["Rank"] = (
 
@@ -596,24 +507,54 @@ def append_rank(
 
 
 # ==========================================================
+# Opinion
+# ==========================================================
+
+def investment_opinion(
+
+    upside,
+
+):
+
+    upside = safe_float(
+
+        upside
+
+    )
+
+    if pd.isna(upside):
+
+        return "☆☆☆☆☆"
+
+    if upside >= 30:
+
+        return "★★★★★"
+
+    if upside >= 20:
+
+        return "★★★★☆"
+
+    if upside >= 10:
+
+        return "★★★☆☆"
+
+    if upside >= 0:
+
+        return "★★☆☆☆"
+
+    return "★☆☆☆☆"
+
+# ==========================================================
 # Final Analysis
 # ==========================================================
 
-def make_analysis(
-
-    df,
-
-):
+def make_analysis(df):
 
     result = build_per_compare(
         df
     )
 
     result = calculate_quant_score(
-        result
-    )
-
-    result = append_rank(
         result
     )
 
@@ -629,22 +570,18 @@ def make_analysis(
 
         ascending=False,
 
+    ).reset_index(
+        drop=True,
     )
 
-    return result.reset_index(
-        drop=True
-    )
+    return result
 
 
 # ==========================================================
 # Summary
 # ==========================================================
 
-def build_summary(
-
-    df,
-
-):
+def build_summary(df):
 
     if df.empty:
 
