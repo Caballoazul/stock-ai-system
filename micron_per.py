@@ -145,6 +145,8 @@ def get_micron_data():
 
             "Ticker": "MU",
 
+            "Currency": "USD",
+
             "Price": round(price, 2),
 
             "ChangePct": round(
@@ -186,6 +188,8 @@ def get_micron_data():
             "Company": "Micron",
 
             "Ticker": "MU",
+
+            "Currency":"USD",
 
             "Price": 0,
 
