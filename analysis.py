@@ -198,6 +198,8 @@ def build_per_scenarios(
 
     current_per,
 
+     micron_per,
+
 ):
 
     rows = []
@@ -211,6 +213,10 @@ def build_per_scenarios(
     )
 
     for per in PER_LEVELS:
+
+    if per > micron_per:
+
+        break
 
         target_price = eps * per
 
@@ -232,6 +238,33 @@ def build_per_scenarios(
 
         )
 
+    if micron_per not in PER_LEVELS:
+
+        rows.append(
+
+            {
+
+                "PER": round(
+
+                    micron_per,
+
+                    2,
+
+                ),
+
+                "TargetPrice": round(
+
+                    eps * micron_per,
+
+                    0,
+
+                ),
+
+            }
+
+        )
+
+    
     return pd.DataFrame(rows)
 
 
@@ -350,6 +383,8 @@ def build_per_compare(df):
             price,
 
             per,
+
+            micron_per,
 
         )
 
