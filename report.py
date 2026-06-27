@@ -22,6 +22,14 @@ def format_price(value):
 
     return f"{value:,.0f}원"
 
+def format_usd(value):
+
+    if pd.isna(value):
+
+        return "-"
+
+    return f"${value:,.2f}"
+
 
 def format_percent(value):
 
@@ -128,7 +136,7 @@ def build_market_report(df):
     )
 
     report.append(
-        f"주가        {format_price(micron['Price'])}"
+        f"주가        {format_usd(micron['Price'])}"
     )
 
     report.append(
@@ -250,7 +258,7 @@ def build_valuation_report(df):
 
     report.append(
 
-        "📈 목표주가"
+        "📈 Micron PER 기준 적정주가"
 
     )
 
@@ -292,6 +300,12 @@ def build_valuation_report(df):
 
     )
 
+    report.append(
+
+        f"Micron PER  {format_number(samsung['ReferencePER'])}"
+
+    )
+    
     report.extend(
 
         build_per_scenario_text(
@@ -342,6 +356,12 @@ def build_valuation_report(df):
 
     )
 
+    report.append(
+
+        f"Micron PER  {format_number(sk['ReferencePER'])}"
+
+    )
+    
     report.extend(
 
         build_per_scenario_text(
