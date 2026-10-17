@@ -3,6 +3,15 @@ name: Test Kakao Token Refresh
 
 on:
   workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Kakao authentication test mode"
+        required: true
+        type: choice
+        options:
+          - normal
+          - simulate_auth_failure
+        default: normal
 
 permissions:
   contents: read
@@ -12,12 +21,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Refresh Kakao token and save if rotated
+      - name: Refresh token and alert on failure
         env:
+          TEST_MODE: ${{ inputs.test_mode }}
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_SECRET_UPDATE_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python - <<'PY'
           import os
@@ -26,79 +38,157 @@ jobs:
           import urllib.request
           import urllib.parse
           import urllib.error
+          from datetime import datetime, timezone, timedelta
 
-          required = [
-              "KAKAO_REST_API_KEY",
-              "KAKAO_REFRESH_TOKEN",
-              "GH_TOKEN",
-              "GH_REPO"
-          ]
+          def send_telegram_alert(error_type):
+              bot = os.environ["TELEGRAM_TOKEN"]
+              chat = os.environ["TELEGRAM_CHAT_ID"]
 
-          missing = [k for k in required if not os.getenv(k)]
-          if missing:
-              raise RuntimeError(
-                  "Missing environment variables: " + ", ".join(missing)
+              now = datetime.now(
+                  timezone(timedelta(hours=9))
+              ).strftime("%Y-%m-%d %H:%M:%S")
+
+              message = (
+                  "⚠️ [카카오톡 인증 장애 알림]\n\n"
+                  f"발생 시각: {now}\n"
+                  f"오류 유형: {error_type}\n\n"
+                  "카카오톡 자동 전송에 문제가 "
+                  "발생했습니다.\n"
+                  "GitHub Actions 실행 기록을 "
+                  "확인해주세요."
               )
 
-          data = urllib.parse.urlencode({
-              "grant_type": "refresh_token",
-              "client_id": os.environ["KAKAO_REST_API_KEY"],
-              "refresh_token": os.environ["KAKAO_REFRESH_TOKEN"]
-          }).encode()
+              url = (
+                  "https://api.telegram.org/bot"
+                  + bot + "/sendMessage"
+              )
 
-          request = urllib.request.Request(
-              "https://kauth.kakao.com/oauth/token",
-              data=data,
-              method="POST"
-          )
+              payload = json.dumps({
+                  "chat_id": chat,
+                  "text": message
+              }).encode()
 
-          try:
+              req = urllib.request.Request(
+                  url,
+                  data=payload,
+                  headers={
+                      "Content-Type": "application/json"
+                  },
+                  method="POST"
+              )
+
               with urllib.request.urlopen(
-                  request, timeout=20
+                  req, timeout=20
               ) as response:
                   result = json.load(response)
-          except urllib.error.HTTPError as e:
-              print("Kakao token refresh failed")
-              print("HTTP status:", e.code)
-              raise SystemExit(1)
-          except Exception as e:
-              print("Kakao request failed:", type(e).__name__)
-              raise SystemExit(1)
 
-          access_token = result.get("access_token")
-          if not access_token:
-              raise RuntimeError("Access token missing")
+              if not result.get("ok"):
+                  raise RuntimeError(
+                      "Telegram alert rejected"
+                  )
 
-          print("PASS: Access Token refreshed")
-          print("Expires in:", result.get("expires_in"))
+              print("PASS: Telegram alert sent")
 
-          new_refresh = result.get("refresh_token")
+          def refresh_token():
+              if os.environ.get("TEST_MODE") == "simulate_auth_failure":
+                  raise RuntimeError(
+                      "SIMULATED_KAKAO_AUTH_FAILURE"
+                  )
 
-          if new_refresh:
-              print("New Refresh Token received")
-
-              command = [
-                  "gh", "secret", "set",
+              required = [
+                  "KAKAO_REST_API_KEY",
                   "KAKAO_REFRESH_TOKEN",
-                  "--repo", os.environ["GH_REPO"]
+                  "GH_TOKEN",
+                  "GH_REPO"
               ]
 
-              # 토큰을 명령행 인자가 아닌 표준입력으로 전달
-              completed = subprocess.run(
-                  command,
-                  input=new_refresh,
-                  text=True,
-                  capture_output=True,
-                  timeout=30
+              missing = [
+                  key for key in required
+                  if not os.getenv(key)
+              ]
+
+              if missing:
+                  raise RuntimeError(
+                      "MISSING_CONFIG: " + ",".join(missing)
+                  )
+
+              data = urllib.parse.urlencode({
+                  "grant_type": "refresh_token",
+                  "client_id": os.environ["KAKAO_REST_API_KEY"],
+                  "refresh_token": os.environ["KAKAO_REFRESH_TOKEN"]
+              }).encode()
+
+              req = urllib.request.Request(
+                  "https://kauth.kakao.com/oauth/token",
+                  data=data,
+                  method="POST"
               )
 
-              if completed.returncode != 0:
-                  print("FAIL: Refresh Token save failed")
-                  raise SystemExit(1)
+              try:
+                  with urllib.request.urlopen(
+                      req, timeout=20
+                  ) as response:
+                      result = json.load(response)
+              except urllib.error.HTTPError as error:
+                  raise RuntimeError(
+                      f"KAKAO_HTTP_{error.code}"
+                  ) from None
 
-              print("PASS: New Refresh Token saved")
-          else:
-              print("Existing Refresh Token retained")
+              if not result.get("access_token"):
+                  raise RuntimeError(
+                      "KAKAO_ACCESS_TOKEN_MISSING"
+                  )
 
-          print("PASS: Kakao token refresh test completed")
+              new_refresh = result.get("refresh_token")
+
+              if new_refresh:
+                  completed = subprocess.run(
+                      [
+                          "gh", "secret", "set",
+                          "KAKAO_REFRESH_TOKEN",
+                          "--repo", os.environ["GH_REPO"]
+                      ],
+                      input=new_refresh,
+                      text=True,
+                      capture_output=True,
+                      timeout=30
+                  )
+
+                  if completed.returncode != 0:
+                      raise RuntimeError(
+                          "GITHUB_SECRET_UPDATE_FAILED"
+                      )
+
+                  print("PASS: New Refresh Token saved")
+              else:
+                  print("Existing Refresh Token retained")
+
+              print("PASS: Kakao token refreshed")
+
+          try:
+              refresh_token()
+          except Exception as error:
+              error_type = str(error)
+
+              # 인증정보가 포함될 수 있는 예외 메시지 대신
+              # 사전에 정의된 오류 코드만 출력
+              if not (
+                  error_type.startswith("KAKAO_HTTP_")
+                  or error_type in [
+                      "SIMULATED_KAKAO_AUTH_FAILURE",
+                      "KAKAO_ACCESS_TOKEN_MISSING",
+                      "GITHUB_SECRET_UPDATE_FAILED"
+                  ]
+                  or error_type.startswith("MISSING_CONFIG:")
+              ):
+                  error_type = type(error).__name__
+
+              print("FAIL:", error_type)
+
+              try:
+                  send_telegram_alert(error_type)
+              except Exception:
+                  print("FAIL: Telegram alert delivery failed")
+
+              raise SystemExit(1)
           PY
