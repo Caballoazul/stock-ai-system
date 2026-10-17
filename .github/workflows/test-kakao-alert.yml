@@ -1,0 +1,85 @@
+
+name: Test Kakao Failure Alert
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-kakao-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Simulate Kakao authentication failure
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import urllib.request
+          from datetime import datetime, timezone, timedelta
+
+          bot_token = os.environ.get("TELEGRAM_TOKEN")
+          chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+
+          if not bot_token or not chat_id:
+              raise RuntimeError(
+                  "Telegram credentials are missing"
+              )
+
+          kst = timezone(timedelta(hours=9))
+          now = datetime.now(kst)
+
+          # 실제 카카오 인증정보를 변경하지 않는 모의 오류
+          simulated_error = "KAKAO_AUTH_TEST_FAILURE"
+
+          message = (
+              "⚠️ [카카오톡 인증 장애 테스트]\n\n"
+              f"발생 시각: {now:%Y-%m-%d %H:%M:%S}\n"
+              f"오류 코드: {simulated_error}\n\n"
+              "카카오톡 인증 오류 알림 기능을 "
+              "검증하고 있습니다.\n"
+              "실제 카카오톡 장애는 아닙니다.\n\n"
+              "조치: 실제 운영에서는 토큰 상태를 "
+              "확인해야 합니다."
+          )
+
+          url = (
+              "https://api.telegram.org/bot"
+              + bot_token + "/sendMessage"
+          )
+
+          payload = json.dumps({
+              "chat_id": chat_id,
+              "text": message
+          }).encode("utf-8")
+
+          request = urllib.request.Request(
+              url,
+              data=payload,
+              headers={
+                  "Content-Type": "application/json"
+              },
+              method="POST"
+          )
+
+          try:
+              with urllib.request.urlopen(
+                  request, timeout=20
+              ) as response:
+                  result = json.load(response)
+          except Exception:
+              print("FAIL: Telegram alert request failed")
+              raise SystemExit(1)
+
+          if not result.get("ok"):
+              raise RuntimeError(
+                  "Telegram alert was not accepted"
+              )
+
+          print("PASS: Telegram failure alert sent")
+          PY
