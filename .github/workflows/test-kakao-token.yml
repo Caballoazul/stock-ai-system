@@ -1,0 +1,104 @@
+
+name: Test Kakao Token Refresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-kakao-token:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Refresh Kakao token and save if rotated
+        env:
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_SECRET_UPDATE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import subprocess
+          import urllib.request
+          import urllib.parse
+          import urllib.error
+
+          required = [
+              "KAKAO_REST_API_KEY",
+              "KAKAO_REFRESH_TOKEN",
+              "GH_TOKEN",
+              "GH_REPO"
+          ]
+
+          missing = [k for k in required if not os.getenv(k)]
+          if missing:
+              raise RuntimeError(
+                  "Missing environment variables: " + ", ".join(missing)
+              )
+
+          data = urllib.parse.urlencode({
+              "grant_type": "refresh_token",
+              "client_id": os.environ["KAKAO_REST_API_KEY"],
+              "refresh_token": os.environ["KAKAO_REFRESH_TOKEN"]
+          }).encode()
+
+          request = urllib.request.Request(
+              "https://kauth.kakao.com/oauth/token",
+              data=data,
+              method="POST"
+          )
+
+          try:
+              with urllib.request.urlopen(
+                  request, timeout=20
+              ) as response:
+                  result = json.load(response)
+          except urllib.error.HTTPError as e:
+              print("Kakao token refresh failed")
+              print("HTTP status:", e.code)
+              raise SystemExit(1)
+          except Exception as e:
+              print("Kakao request failed:", type(e).__name__)
+              raise SystemExit(1)
+
+          access_token = result.get("access_token")
+          if not access_token:
+              raise RuntimeError("Access token missing")
+
+          print("PASS: Access Token refreshed")
+          print("Expires in:", result.get("expires_in"))
+
+          new_refresh = result.get("refresh_token")
+
+          if new_refresh:
+              print("New Refresh Token received")
+
+              command = [
+                  "gh", "secret", "set",
+                  "KAKAO_REFRESH_TOKEN",
+                  "--repo", os.environ["GH_REPO"]
+              ]
+
+              # 토큰을 명령행 인자가 아닌 표준입력으로 전달
+              completed = subprocess.run(
+                  command,
+                  input=new_refresh,
+                  text=True,
+                  capture_output=True,
+                  timeout=30
+              )
+
+              if completed.returncode != 0:
+                  print("FAIL: Refresh Token save failed")
+                  raise SystemExit(1)
+
+              print("PASS: New Refresh Token saved")
+          else:
+              print("Existing Refresh Token retained")
+
+          print("PASS: Kakao token refresh test completed")
+          PY
