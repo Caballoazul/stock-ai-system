@@ -572,7 +572,7 @@ def build_quant_report(df):
 
         report.append("")
 
- return "\n".join(report)
+     return "\n".join(report)
 
 # ==========================================================
 # AI Report
