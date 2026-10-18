@@ -46,6 +46,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+
+      # Gmail 읽기 기능 테스트 (신규 추가)
+      - name: Test Gmail Reader
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python test_gmail_reader.py
+
+
+
+          
       - name: Determine report mode
         id: mode
         env:
