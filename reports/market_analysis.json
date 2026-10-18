@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "generated_at_kst": "2026-10-18T23:38:10+09:00",
+  "data_source": "market_intelligence.py",
+  "market": {
+    "Micron": {
+      "price": 878.8400268554688,
+      "change": -5.626902187235128,
+      "date": "2026-10-16",
+      "volume": 30293300,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    },
+    "NVIDIA": {
+      "price": 214.1300048828125,
+      "change": -1.427054691201457,
+      "date": "2026-10-16",
+      "volume": 120855100,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    },
+    "NASDAQ": {
+      "price": 26140.029296875,
+      "change": -2.1450206699957897,
+      "date": "2026-10-16",
+      "volume": 9505000000,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    },
+    "SOX": {
+      "price": 11137.2900390625,
+      "change": -3.83310486013384,
+      "date": "2026-10-16",
+      "volume": 0,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    },
+    "Samsung": {
+      "price": 215500.0,
+      "change": 2.6190476190476097,
+      "date": "2026-10-16",
+      "volume": 18908560,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    },
+    "SK Hynix": {
+      "price": 1272000.0,
+      "change": 0.7923930269413626,
+      "date": "2026-10-16",
+      "volume": 4561066,
+      "source": "Yahoo Finance / yfinance",
+      "error": null
+    }
+  },
+  "news_headlines_unverified": [
+    {
+      "title": "Samsung to use TSMC technology for Nvidia's next-generation memory chips, Seoul newspaper reports - Reuters",
+      "link": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQLVd3RU5QdzNwZHd0cUNCbUQxM3B6M2JOTXZZbEE4b3Y4czkxSjBuNklIRXU2S1VyRld6WTlRQUdlZkN3TGNRcng5cjR6ZEViNXNqcHh2RnlRU2hWVXRPUVFjVXRvd2FaaTVkd002aUk4WHlEQ2wxTGk3alF5S0FUTGNMUXF2dV9QUjk4eThjcWVPaVBLYzc2c0NUaUN4UUVMcVZTSERiMDE5VXp0NDdoVFpuS2E0TGZoUnBrRTExcnZDRlJia1VNcU40SUxQcE1y?oc=5",
+      "source": "Reuters",
+      "published": "10-18 21:09 KST"
+    },
+    {
+      "title": "Which company has the world’s highest earnings? The answer may surprise you - Yahoo Finance",
+      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQWWNwN0tvY3BiS3pNN2Iyd0dxeVVvQk13VDl2bHd6Sl81X1pzYmFMWE1UVkdpdk85ZkxOcHRMcHJ5aGJqQ2duV0w3YVlhbVA0cWtYbnd2R0Rlb2NQTDdLdHBHZ1BCMWNqZTg4d0tVOHFSU0xfYXJicTcxNVh1M1BRQU10X1YwNFZueFNYckViZkhaakQ0UHJLWTJTTFJoZjZOcDNKNw?oc=5",
+      "source": "Yahoo Finance",
+      "published": "10-18 16:48 KST"
+    },
+    {
+      "title": "These surprising stocks could be some of the biggest drivers of S&P 500 earnings growth - MarketWatch",
+      "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxQXzFmLVBiTG5yNGZabEo2NWJkaTVzdnhQQ0tELUpBTVhJazN6NURHTjBscTdiOHJiUkE1NDZ0dDFrOXkwM3AwWVhORVl6bVFLQmFLRkdMTHZxUmxkT0Z6eklHZzByWXEtNUF6UTJCYzltQ29RUk50Q0stRHBQM18xVTF5VUJ2VU9HNG4zWXBwV3VMYlhDN0dNdnljU3RGM3ZXV3NXRDZCV0EwWXE4VVNWcVpqV0xTTndxNXZiMGRIcWh1WlgzLUkzY1BB?oc=5",
+      "source": "MarketWatch",
+      "published": "10-18 23:00 KST"
+    },
+    {
+      "title": "NVIDIA’s Development Of Custom HBM Drops Samsung’s And TSMC’s Foundry Rivalry, As Both Manufacturers Join Forces To Develop “Base Die” On The 3nm Node - Wccftech",
+      "link": "https://news.google.com/rss/articles/CBMic0FVX3lxTE5BTkpLWnF6anJoSlk0V0pXOWpCYUJnSWYweVdzS2Q0MDRTZG53alNxSVhPNXVmSEZBSWt2VW9RSzItRkJ4Ul9ISGQxNllIYXVzTFZSTXZ5N3pZNy05RHNWU3J2bUs0R1dhc1Jzc3MwSFdYd1XSAXhBVV95cUxNREVfbGx3VXpvejk1WFFUVDFEVzdnZzZ0MjRGTFhCYl9MTEZuNFNteHBURmtPeGpHdkEtZjFGbW9vRWdtNGdkc2E4bW1aTExhWXpvMXhmdlY4OGdzMEMxeXpuYW9zakMzSGxvbzVDbVVLLW9uSFVDN3g?oc=5",
+      "source": "Wccftech",
+      "published": "10-18 19:23 KST"
+    },
+    {
+      "title": "President Trump Sells Micron Stock and Buys Another Mega-Cap Artificial Intelligence (AI) Stock - The Motley Fool",
+      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQZkR2YldmSlVIWGFUSmJSRmREanIzaFhwMWNyYk5HQk50SFB5cjVSbVcyZnVyY3ZjNXllMVFEUGQtY205MlZRblZRbjFwLU5BUUw5bUdKXzVDN1lfdm10dHBzNmJiUXBsRk5GRlIwenprZEJBcEZTdHJZSmFjR0RSeXJYZzh6Nnp0WldCb21uQ1FzR0hicGFR?oc=5",
+      "source": "The Motley Fool",
+      "published": "10-18 18:48 KST"
+    },
+    {
+      "title": "President Trump Sells Micron Stock and Buys Another Mega-Cap Artificial Intelligence (AI) Stock - The Globe and Mail",
+      "link": "https://news.google.com/rss/articles/CBMihwJBVV95cUxNdFc2cXNWbUFaaXZZQXUwWkhXSWxZYWZJZXc1ejNadEFCS3I2bXc1MFJsdlc5MlJFQ1E2NW8tbFpVdERMNUJqbDhreGU2YktncGttY3VkbF8zQ0pWc2JBb2dWUVoyZFVUMEg3djN3ejhBQlFJczBRUUxTUGFSdmlrSnV4ZHVDanFoWVFSdTE5d1ZpSzdDUThaTk1WQ3htd1djYlNnc1JvaV9SWVBqbnE5SzFCZzZMeTBSS05MMElIWWcyOGhuUGhmNEY2UUFDUWlwaG83VmZjZGk1bDdlREVUUGw3TTVyREItMDJvNm9nNHdEdHZlV3hOVWE2OVJDbGZ1YmJwNFNPQQ?oc=5",
+      "source": "The Globe and Mail",
+      "published": "10-18 18:14 KST"
+    }
+  ],
+  "news_error": null,
+  "limitations": [
+    "Price data may reflect the latest prior trading session.",
+    "RSS headlines are not verified article bodies.",
+    "This file does not contain AI-generated conclusions."
+  ]
+}
