@@ -1,0 +1,81 @@
+name: Daily Semiconductor Analysis
+
+on:
+  schedule:
+    - cron: '0 23 * * 0-4'  # 08:00 KST Mon-Fri
+    - cron: '30 7 * * 1-5'  # 16:30 KST Mon-Fri
+    - cron: '30 11 * * 1-5' # 20:30 KST Mon-Fri
+  workflow_dispatch:
+    inputs:
+      report_mode:
+        description: 'Report mode for manual test'
+        required: true
+        type: choice
+        default: morning
+        options:
+          - morning
+          - afternoon
+          - night
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semiconductor-daily-report
+  cancel-in-progress: false
+
+jobs:
+  run-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Determine report mode
+        id: mode
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_MODE: ${{ inputs.report_mode }}
+        run: |
+          if [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
+            mode="$MANUAL_MODE"
+          elif [ "$SCHEDULE" = '0 23 * * 0-4' ]; then
+            mode='morning'
+          elif [ "$SCHEDULE" = '30 7 * * 1-5' ]; then
+            mode='afternoon'
+          elif [ "$SCHEDULE" = '30 11 * * 1-5' ]; then
+            mode='night'
+          else
+            echo 'Unknown schedule' >&2
+            exit 1
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+      - name: Run Semiconductor Analysis
+        env:
+          REPORT_MODE: ${{ steps.mode.outputs.mode }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_PUBLIC_USERNAME: ${{ vars.TELEGRAM_PUBLIC_USERNAME }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_SECRET_UPDATE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python main.py
