@@ -336,7 +336,7 @@ def fetch_news(hours=24, limit=6, market=None):
         other_candidates = [n for n in prioritized if " ".join(n["title"].lower().split()) not in session_titles]
         selected = (market_candidates[:min(2, limit)] + other_candidates)[:limit]
         if len(selected) < limit:
-            selected += market_candidates[min(2, limit):limit - len(selected) + min(2, limit)]
+            selected += market_candidates[min(2, limit):][:limit - len(selected)]
     else:
         selected = prioritized[:limit]
     print("NEWS_SELECTED_MARKET_SESSION=" + str(sum(bool(n.get("session_date")) for n in selected)))
