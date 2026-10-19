@@ -94,16 +94,37 @@ def compose(mode, market, news, news_error):
         "• 투자 판단은 보유 비중·현금 수요·변동성 등을 함께 고려해야 하며 이 보고서는 매매 지시가 아닙니다.\n\n"
         "6. 데이터 및 해석 한계\n"
         "• 가격: Yahoo Finance 일별 데이터. 지연·휴장 시 마지막 거래일 가격일 수 있습니다.\n"
-        "• 뉴스: Google News RSS 검색 결과. 기사 제목만으로 긍정·부정 판단을 확정하지 않습니다.\n"
+        "• 뉴스: 언론사 RSS 우선, GDELT·Google News 예비 경로. 기사 본문 확보와 독립 검증은 다릅니다.\n"
         "• PER 비교: 기존 forward/trailing 기간 불일치 가능성 때문에 검증 전까지 목표주가를 제외합니다.\n"
         "• 국내 외국인·기관 수급, 오전 예측의 저장/사후 검증, NXT 가격은 아직 미구현입니다."
     )
+    # Telegram: concise, actionable reading order without asserting news causality.
+    telegram_news = []
+    for item in news[:2]:
+        analysis = item.get("analysis") or {}
+        verified_body = "본문 확보" in item.get("verification", "")
+        heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
+        telegram_news.append("• " + str(heading)[:90])
+        if verified_body:
+            telegram_news.append("  요약: " + str(analysis.get("summary_ko", "요약 없음"))[:170])
+            telegram_news.append("  삼성: " + str(analysis.get("samsung_impact", "확인 불가"))[:120])
+            telegram_news.append("  하이닉스: " + str(analysis.get("hynix_impact", "확인 불가"))[:120])
+            telegram_news.append("  근거: 기사 본문 확보·AI 분석, 독립 검증 전")
+        else:
+            telegram_news.append("  근거: 원문 미확인·기업별 영향 판단 보류")
+        telegram_news.append("  출처: " + str(item.get("source", "미확인"))
+                             + " / " + str(item.get("published", "시각 미확인")))
+        if item.get("link"):
+            telegram_news.append("  원문: " + str(item["link"]))
+    if not telegram_news:
+        telegram_news.append("• 관련 기사 없음 — 원인 분석 보류")
     telegram = (
-        f"[{title}]\n{now:%m/%d %H:%M} KST\n"
-        + "\n".join(us + kr)
-        + "\n\n[핵심 관찰]\n" + "\n".join("• "+x for x in clues)
-        + "\n\n[주요 뉴스]\n"
-        + "\n".join("• "+((x.get("analysis") or {}).get("headline_ko") or "[원문 미검증] "+x["title"])[:100] for x in news[:3])
-        + ("\n• 확인된 기사 없음" if not news else "")
+        f"[{title}]\\n{now:%m/%d %H:%M} KST\\n"
+        + "\\n".join(us[:4])
+        + "\\n\\n[국내 종목]\\n" + "\\n".join(kr)
+        + "\\n\\n[시장 관찰]\\n• " + clues[0]
+        + "\\n\\n[핵심 뉴스·근거]\\n" + "\\n".join(telegram_news)
+        + "\\n\\n[판단 유보] 뉴스와 당일 등락의 인과관계 미검증. "
+          "공시·실적·발표 시각 대조 필요."
     )
     return title,details,telegram
