@@ -16,6 +16,24 @@ def line(name, market):
     return f"• {LABELS[name]}: {price} {unit} ({d['change']:+.2f}%) / {d['date']} 종가"
 
 
+def complete_sentence(value, max_chars=180):
+    """Keep whole sentences; never cut a word or sentence midstream."""
+    import re
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    sentences = re.split(r"(?<=[.!?。])\\s+", text)
+    selected = []
+    for sentence in sentences:
+        candidate = " ".join(selected + [sentence])
+        if len(candidate) > max_chars:
+            break
+        selected.append(sentence)
+    if selected:
+        return " ".join(selected)
+    return text  # Prefer complete meaning over arbitrary truncation.
+
+
 def compose(mode, market, news, news_error):
     now = datetime.now(KST)
     morning = mode == "morning"
@@ -106,9 +124,9 @@ def compose(mode, market, news, news_error):
         heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
         telegram_news.append("• " + str(heading)[:90])
         if verified_body:
-            telegram_news.append("  요약: " + str(analysis.get("summary_ko", "요약 없음"))[:170])
-            telegram_news.append("  삼성: " + str(analysis.get("samsung_impact", "확인 불가"))[:120])
-            telegram_news.append("  하이닉스: " + str(analysis.get("hynix_impact", "확인 불가"))[:120])
+            telegram_news.append("  요약: " + complete_sentence(analysis.get("summary_ko", "요약 없음"), 180))
+            telegram_news.append("  삼성: " + complete_sentence(analysis.get("samsung_impact", "확인 불가"), 130))
+            telegram_news.append("  하이닉스: " + complete_sentence(analysis.get("hynix_impact", "확인 불가"), 130))
             telegram_news.append("  근거: 기사 본문 확보·AI 분석, 독립 검증 전")
         else:
             telegram_news.append("  근거: 원문 미확인·기업별 영향 판단 보류")
