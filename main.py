@@ -1,5 +1,6 @@
 """Semiconductor reports: AM/PM Gmail, Telegram, Kako; NXT pending."""
 import os
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -37,6 +38,7 @@ def get_telegram_link(response):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
     mode = resolve_mode()
     now = datetime.now(KST)
     print(f"Report mode: {mode}; KST: {now.isoformat()}")
