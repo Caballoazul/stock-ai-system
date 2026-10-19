@@ -1,0 +1,38 @@
+{
+  "financial_validation": {
+    "schema_version": "1.0",
+    "company": {
+      "name": "SK하이닉스",
+      "corp_code": "00164779",
+      "year": 2026,
+      "report_code": "11012",
+      "fs_div": "CFS",
+      "filing_receipt_no": "20260814003509"
+    },
+    "source_review": {
+      "status": "matched",
+      "source_verified": true,
+      "verification_method": "manual_filing_comparison",
+      "filing_receipt_no": "20260814003509",
+      "matched_count": 6,
+      "expected_count": 6,
+      "mismatches": [],
+      "errors": []
+    },
+    "earnings_quality_review": {
+      "status": "review_required",
+      "flags": [
+        "MaterialFinancialInstrumentValuationGain",
+        "NetIncomeExceedsOperatingIncome"
+      ],
+      "metrics": {
+        "valuation_gain_to_operating_income": 0.6437
+      }
+    },
+    "limitations": {
+      "filing_authenticity_automatically_verified": false,
+      "reviewer_identity_independently_verified": false,
+      "earnings_quality_is_investment_recommendation": false
+    }
+  }
+}
