@@ -48,6 +48,26 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(items[0]["source"], "Publisher")
         self.assertEqual(len(items), 2)
 
+    @patch("market_intelligence.requests.get")
+    @patch("market_intelligence.fetch_direct_news")
+    @patch("market_intelligence.fetch_publisher_rss")
+    def test_market_focused_fallback_adds_relevant_headline(self, rss, gdelt, get):
+        from unittest.mock import Mock
+        rss.return_value = []
+        gdelt.return_value = ([], "HTTP_429")
+        general = b"<rss><channel></channel></rss>"
+        focused = b"""<rss><channel><item>
+        <title>Micron shares fall as chip stocks decline</title>
+        <link>https://news.google.com/rss/articles/move</link>
+        <pubDate>Mon, 19 Oct 2026 07:00:00 GMT</pubDate>
+        </item></channel></rss>"""
+        get.side_effect = [Mock(content=general), Mock(content=focused)]
+        items, _ = fetch_news(limit=2, market={"Micron": {"change": -5.0}})
+        self.assertEqual(len(items), 1)
+        self.assertIn("Micron shares fall", items[0]["title"])
+        self.assertTrue(items[0]["link"].startswith("https://news.google.com/"))
+        self.assertEqual(get.call_count, 2)
+
     def test_no_causality_claim(self):
         item = {"title": "Micron stock falls amid demand concerns"}
         score = market_news_score(item, {"Micron": {"change": -5.63}})
