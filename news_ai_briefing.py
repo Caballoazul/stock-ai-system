@@ -42,8 +42,21 @@ def extract_article(url):
         text = unescape(text)
         # A few headline words are not a verified article body.
         if len(text) < 450:
-            LOG.warning("NEWS_ARTICLE_FETCH=too_short")
-            return None
+            raw_soup = BeautifulSoup(response.text[:900000], "html.parser")
+            for script in raw_soup.select('script[type="application/ld+json"]'):
+                try:
+                    structured = json.loads(script.string or script.get_text())
+                except (ValueError, TypeError):
+                    continue
+                nodes = structured if isinstance(structured, list) else [structured]
+                for node in nodes:
+                    if isinstance(node, dict) and isinstance(node.get("articleBody"), str):
+                        candidate = unescape(node["articleBody"]).strip()
+                        if len(candidate) >= 450 and len(candidate) > len(text):
+                            text = candidate
+            if len(text) < 450:
+                LOG.warning("NEWS_ARTICLE_FETCH=too_short")
+                return None
         LOG.info("NEWS_ARTICLE_FETCH=ok")
         return text[:10000]
     except (requests.RequestException, ValueError) as exc:
