@@ -296,7 +296,9 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_GOOGLE_FALLBACK=" + str(len(fallback)))
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
-    # Google News landing URLs are not verified publisher bodies. Never label them direct.
+    # Google News feeds are discovery-only. Direct publisher URLs remain evidence candidates.
+    print("NEWS_GOOGLE_DISCOVERY_ONLY=" + str(sum(
+        item.get("link", "").startswith("https://news.google.com/") for item in combined)))
     # Reserve candidate space for market-move headlines when direct evidence is sparse.
     if not session_news and len(combined) < limit + 2:
         try:
