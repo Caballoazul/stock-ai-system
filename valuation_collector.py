@@ -11,7 +11,7 @@ FIELDS = {
     'roe': 'returnOnEquity', 'revenue_growth': 'revenueGrowth',
     'earnings_growth': 'earningsGrowth', 'market_cap': 'marketCap',
 }
-SYMBOLS = {'Samsung': '005930.KS', 'SK Hynix': '000660.KS'}
+SYMBOLS = {'Micron': 'MU', 'Samsung': '005930.KS', 'SK Hynix': '000660.KS'}
 
 
 def finite_number(value):
@@ -39,7 +39,8 @@ def normalize(info, name, ticker, collected_at=None):
         return result
     currency = info.get('currency')
     result['currency'] = currency if isinstance(currency, str) else None
-    if currency != 'KRW':
+    expected_currency = 'USD' if name == 'Micron' else 'KRW'
+    if currency != expected_currency:
         result['status'] = 'error'
         result['error'] = 'CurrencyMissingOrMismatch'
         return result
