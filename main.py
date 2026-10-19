@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from market_intelligence import fetch_market, fetch_news
 from insight_report import compose
+from news_ai_briefing import enrich_news
 from gmail_reader import fetch_recent_briefings
 from briefing_integration import format_briefings
 from gmail_sender import send_gmail_report
@@ -45,6 +46,9 @@ def main():
 
     market = fetch_market()
     news, news_error = fetch_news()
+    # Only publisher article bodies may be AI summarized; missing evidence stays labeled.
+    news = enrich_news(news)
+    print("NEWS_AI_VERIFIED=" + str(sum(bool(item.get("analysis")) for item in news)))
     title, detailed, telegram_text = compose(mode, market, news, news_error)
     # Valuation is informational only; collection failures must not block delivery.
     try:
