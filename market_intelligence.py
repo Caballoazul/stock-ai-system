@@ -218,6 +218,9 @@ def fetch_session_market_news(market, limit=12):
     print("NEWS_MARKET_SESSION=" + session.isoformat())
     try:
         response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
+        if response.status_code in (429, 500, 502, 503, 504):
+            print("NEWS_MARKET_SESSION_RETRY=" + str(response.status_code))
+            response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
         root = ElementTree.fromstring(response.content)
         results = []
