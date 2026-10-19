@@ -320,6 +320,7 @@ def fetch_news(hours=24, limit=6, market=None):
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_MARKET_FOCUSED_ERROR=" + type(exc).__name__)
     if not combined:
+        print("NEWS_COLLECTION_STATUS=no_articles; sources_unavailable_or_empty")
         return [], direct_error or "no_articles"
     # Prefer direct publisher URLs; Google News landing links cannot provide article bodies.
     direct_links = [item for item in combined
