@@ -24,7 +24,27 @@ def compose(mode, market, news, news_error):
     kr = [line(k, market) for k in ("Samsung", "SK Hynix")]
     headlines = []
     for i, n in enumerate(news, 1):
-        headlines.append(f"{i}. {n['title']}\n   출처: {n['source']} | {n['published']}\n   원문: {n['link']}")
+        analysis = n.get("analysis")
+        if analysis:
+            facts = analysis.get("facts", [])
+            headlines.append(
+                f"{i}. {analysis['headline_ko']}\\n"
+                f"   한국어 요약: {analysis['summary_ko']}\\n"
+                + "".join(f"   핵심 사실: {fact}\\n" for fact in facts[:3])
+                + f"   삼성전자 영향: {analysis['samsung_impact']}\\n"
+                + f"   SK하이닉스 영향: {analysis['hynix_impact']}\\n"
+                + f"   불확실성: {analysis['uncertainty']}\\n"
+                + f"   검증: {n.get('verification', 'AI 요약')}\\n"
+                + f"   출처: {n['source']} | {n['published']}\\n"
+                + f"   원문: {n['link']}"
+            )
+        else:
+            headlines.append(
+                f"{i}. [원문 미검증] {n['title']}\\n"
+                f"   본문 미확인: 번역·요약·기업 영향 분석 보류\\n"
+                f"   출처: {n['source']} | {n['published']}\\n"
+                f"   원문: {n['link']}"
+            )
     if not headlines:
         headlines = [f"최근 24시간 뉴스 확인 불가 ({news_error or '조건에 맞는 기사 없음'})."]
     def move(name):
