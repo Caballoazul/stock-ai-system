@@ -7,6 +7,22 @@ class EvidenceReportTests(unittest.TestCase):
         self.assertEqual(news_section({"title": "Asian chip stocks fall on funding worries"}), "시장 변동 관련")
         self.assertEqual(news_section({"title": "Samsung HBM base die process"}), "산업·기술 동향")
 
+    def test_verified_industry_precedes_unverified_market(self):
+        market = {}
+        news = [
+            {"title": "Micron shares fall", "source": "Google News",
+             "published": "10-19 08:00 KST", "link": "https://news.google.com/a",
+             "verification": "원문 미확인", "analysis": None},
+            {"title": "Samsung HBM base die process", "source": "Publisher",
+             "published": "10-19 09:00 KST", "link": "https://publisher.example/a",
+             "verification": "기사 본문 확보", "analysis": {
+                 "headline_ko": "HBM 기술 기사", "summary_ko": "본문 분석 완료.",
+                 "facts": [], "samsung_impact": "확인 불가",
+                 "hynix_impact": "확인 불가", "uncertainty": "독립 검증 필요"}},
+        ]
+        _, _, telegram = compose("morning", market, news, None)
+        self.assertLess(telegram.index("HBM 기술 기사"), telegram.index("Micron shares fall"))
+
     def test_evidence_tiers_and_no_causal_assertion(self):
         market = {
             "Micron": {"price": 100, "change": -5.0, "date": "2026-10-16"},
