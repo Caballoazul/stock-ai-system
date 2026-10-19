@@ -68,7 +68,7 @@ def compose(mode, market, news, news_error):
         f"작성: {now:%Y-%m-%d %H:%M} KST\n\n"
         "1. 미국 시장 지표 (각 지표의 실제 거래일 표시)\n" + "\n".join(us) + "\n\n"
         "2. 한국 정규장 지표\n" + "\n".join(kr) + "\n\n"
-        "3. 최근 24시간 관련 뉴스 (자동 수집 제목, 기사 본문 미검증)\n" + "\n\n".join(headlines) + "\n\n"
+        "3. 최근 24시간 관련 뉴스 (본문 확보 여부 및 번역 검증 상태 구분)\n" + "\n\n".join(headlines) + "\n\n"
         "4. 시장 해석: 관찰과 가설 구분\n" + "\n".join("• "+x for x in clues) + "\n"
         "• 뉴스가 가격 변동의 원인인지 확인되지 않았으므로 인과관계로 단정하지 않습니다.\n\n"
         "5. 삼성전자·SK하이닉스 관찰 조건\n"
@@ -86,7 +86,7 @@ def compose(mode, market, news, news_error):
         + "\n".join(us + kr)
         + "\n\n[핵심 관찰]\n" + "\n".join("• "+x for x in clues)
         + "\n\n[주요 뉴스]\n"
-        + "\n".join("• "+x["title"][:100] for x in news[:3])
+        + "\n".join("• "+((x.get("analysis") or {}).get("headline_ko") or "[원문 미검증] "+x["title"])[:100] for x in news[:3])
         + ("\n• 확인된 기사 없음" if not news else "")
     )
     return title,details,telegram
