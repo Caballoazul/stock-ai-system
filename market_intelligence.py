@@ -305,6 +305,10 @@ def fetch_news(hours=24, limit=6, market=None):
                            + "&hl=en-US&gl=US&ceid=US:en")
             focused_response = requests.get(focused_url, timeout=18,
                                             headers={"User-Agent": "Mozilla/5.0"})
+            if focused_response.status_code in (429, 500, 502, 503, 504):
+                print("NEWS_MARKET_FOCUSED_RETRY=" + str(focused_response.status_code))
+                focused_response = requests.get(focused_url, timeout=18,
+                                                headers={"User-Agent": "Mozilla/5.0"})
             focused_response.raise_for_status()
             focused_root = ElementTree.fromstring(focused_response.content)
             focused = []
