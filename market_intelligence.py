@@ -47,7 +47,9 @@ def fetch_direct_news(hours=24, limit=6):
         response = requests.get("https://api.gdeltproject.org/api/v2/doc/doc",
                                 params=params, timeout=20,
                                 headers={"User-Agent": "stock-ai-system/1.0"})
-        response.raise_for_status()
+        if response.status_code != 200:
+            print("NEWS_DIRECT_HTTP_STATUS=" + str(response.status_code))
+            return [], "HTTP_" + str(response.status_code)
         items = response.json().get("articles", [])
     except (requests.RequestException, ValueError) as exc:
         return [], type(exc).__name__
