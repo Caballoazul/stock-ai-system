@@ -47,7 +47,7 @@ def main():
         return {"mode": mode, "status": "pending_nxt_source"}
 
     market = fetch_market()
-    news, news_error = fetch_news()
+    news, news_error = fetch_news(market=market)
     # Only publisher article bodies may be AI summarized; missing evidence stays labeled.
     news = enrich_news(news)
     print("NEWS_AI_VERIFIED=" + str(sum(bool(item.get("analysis")) and "본문 확보" in item.get("verification", "") for item in news)))
