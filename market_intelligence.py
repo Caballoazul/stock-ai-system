@@ -12,6 +12,7 @@ SYMBOLS = {
     "SOX": "^SOX", "Samsung": "005930.KS", "SK Hynix": "000660.KS",
 }
 NEWS_QUERY = '(Micron OR Nvidia OR "SK hynix" OR Samsung) (HBM OR semiconductor OR memory OR earnings)'
+MARKET_MOVE_QUERY = '("Micron stock" OR "semiconductor stocks" OR "chip stocks" OR "SOX index") (fall OR drop OR selloff OR plunge OR decline OR earnings OR outlook)'
 
 
 def fetch_market():
@@ -237,6 +238,35 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
     if not combined:
         return [], direct_error or "no_articles"
+    # Google News landing URLs are not verified publisher bodies. Never label them direct.
+    # Reserve candidate space for market-move headlines when direct evidence is sparse.
+    if len(combined) < limit + 2:
+        try:
+            focused_url = ("https://news.google.com/rss/search?q="
+                           + quote(MARKET_MOVE_QUERY + " when:1d")
+                           + "&hl=en-US&gl=US&ceid=US:en")
+            focused_response = requests.get(focused_url, timeout=18,
+                                            headers={"User-Agent": "Mozilla/5.0"})
+            focused_response.raise_for_status()
+            focused_root = ElementTree.fromstring(focused_response.content)
+            focused = []
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+            for entry in focused_root.findall("./channel/item"):
+                title = (entry.findtext("title") or "").strip()
+                link = (entry.findtext("link") or "").strip()
+                try:
+                    published = parsedate_to_datetime(entry.findtext("pubDate") or "").astimezone(timezone.utc)
+                except (ValueError, TypeError, OverflowError):
+                    continue
+                if not title or not link.startswith("https://") or published < cutoff:
+                    continue
+                focused.append({"title": title, "link": link,
+                                "source": entry.findtext("source") or "Google News RSS",
+                                "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
+            add(focused, "market")
+            print("NEWS_MARKET_FOCUSED=" + str(len(focused)))
+        except (requests.RequestException, ElementTree.ParseError) as exc:
+            print("NEWS_MARKET_FOCUSED_ERROR=" + type(exc).__name__)
     # Prefer direct publisher URLs; Google News landing links cannot provide article bodies.
     direct_links = [item for item in combined
                     if not item.get("link", "").startswith("https://news.google.com/")]
