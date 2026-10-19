@@ -150,14 +150,52 @@ def fetch_publisher_rss(hours=24, limit=6):
     return results[:limit]
 
 
-def fetch_news(hours=24, limit=6):
+
+def market_news_score(item, market=None):
+    """Rank evidence candidates; a high score does NOT establish price causality."""
+    title = (item.get("title") or "").lower()
+    market = market or {}
+    names = ("micron", "nvidia", "hynix", "samsung", "semiconductor", "chip", "hbm", "dram", "tsmc")
+    catalysts = ("earnings", "guidance", "forecast", "outlook", "demand", "supply",
+                 "export", "restriction", "tariff", "downgrade", "upgrade",
+                 "selloff", "slump", "drop", "fall", "decline", "rally",
+                 "surge", "shares", "stock", "revenue", "margin", "price")
+    sector = any(word in title for word in names)
+    score = sum(2 for word in names if word in title)
+    score += sum(3 for word in catalysts if word in title)
+    if any(word in title for word in ("hbm", "dram", "memory")):
+        score += 3
+    if not sector:
+        score -= 8
+    if any(word in title for word in ("netflix", "oracle", "stocktwits tech watch")):
+        score -= 5
+    movers = {"Micron": ("micron",), "NVIDIA": ("nvidia",)}
+    for name, words in movers.items():
+        change = market.get(name, {}).get("change")
+        if isinstance(change, (int, float)) and abs(change) >= 3:
+            if any(word in title for word in words):
+                score += 4
+    if any(isinstance(market.get(name, {}).get("change"), (int, float))
+           and abs(market[name]["change"]) >= 3 for name in ("Micron", "SOX")):
+        if sector and any(word in title for word in catalysts):
+            score += 3
+    return score
+
+
+def rank_market_news(items, market=None, limit=6):
+    """Prioritize relevant catalysts; retain title-only evidence labels downstream."""
+    ranked = sorted(items, key=lambda item: market_news_score(item, market), reverse=True)
+    return ranked[:limit]
+
+
+def fetch_news(hours=24, limit=6, market=None):
     publisher = fetch_publisher_rss(hours=hours, limit=limit)
     if publisher:
         print("NEWS_SOURCE=publisher_rss count=" + str(len(publisher)))
-        return publisher, None
+        return rank_market_news(publisher, market, limit), None
     direct, direct_error = fetch_direct_news(hours=hours, limit=limit)
     if direct:
-        return direct, None
+        return rank_market_news(direct, market, limit), None
     print("NEWS_DIRECT_SOURCE_UNAVAILABLE=" + str(direct_error))
     # Fallback is headlines only: Google News RSS links are NOT verified publisher bodies.
     url = ("https://news.google.com/rss/search?q="
@@ -186,6 +224,6 @@ def fetch_news(hours=24, limit=6):
                              "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
             if len(articles) >= limit:
                 break
-        return articles, None
+        return rank_market_news(articles, market, limit), None
     except Exception as exc:
         return [], type(exc).__name__
