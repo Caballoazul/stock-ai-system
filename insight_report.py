@@ -186,12 +186,13 @@ def compose(mode, market, news, news_error):
             if item.get("link") and not item["link"].startswith("https://news.google.com/"):
                 telegram_news.append("  링크: " + str(item["link"]))
     telegram = (
-        f"[{title}]\\n{now:%m/%d %H:%M} KST\\n"
-        + "\\n".join(us[:4])
-        + "\\n\\n[미국장 변동 원인]\\n" + cause
-        + "\\n\\n[국내 종목]\\n" + "\\n".join(kr)
-        + "\\n\\n[국내 영향·비교]\\n" + compare
-        + "\\n\\n[핵심 뉴스·근거]\\n" + "\\n".join(telegram_news)
-        + "\\n\\n[추가 확인] 발표 시각·기업 공시·실적을 대조해야 합니다."
+        f"[{title}]\n{now:%m/%d %H:%M} KST\n"
+        + "\n".join(us[:4])
+        + "\n\n[미국장 변동 원인]\n" + cause
+        + "\n\n[국내 종목]\n" + "\n".join(kr)
+        + "\n\n[국내 영향·비교]\n" + compare
+        + "\n\n[핵심 뉴스·근거]\n" + "\n".join(telegram_news)
+        + "\n\n[판단 유보] 뉴스와 당일 등락의 인과관계 미검증."
+        + "\n[추가 확인] 발표 시각·기업 공시·실적을 대조해야 합니다."
     )
     return title,details,telegram
