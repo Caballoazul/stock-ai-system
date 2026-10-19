@@ -69,7 +69,7 @@ def resolve_gemini_model(key, preferred):
             if "generateContent" in m.get("supportedGenerationMethods", [])
             and m.get("name", "").startswith("models/")
         ]
-        for candidate in (preferred, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"):
+        for candidate in (preferred, "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash"):
             if candidate in supported:
                 LOG.info("NEWS_AI_MODEL_SELECTED=%s", candidate)
                 return candidate
