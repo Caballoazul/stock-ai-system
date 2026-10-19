@@ -18,6 +18,25 @@ class EvidenceReportTests(unittest.TestCase):
         self.assertIn("본문 확보", enriched[3]["verification"])
         self.assertNotIn("analysis", enriched[4])
 
+    @patch("news_ai_briefing.requests.get")
+    def test_structured_article_body_fallback(self, get):
+        from news_ai_briefing import extract_article
+        import json
+        response = get.return_value
+        response.url = "https://publisher.com/news"
+        response.text = '<html><body><article>Short</article><script type="application/ld+json">' + json.dumps({"articleBody": "Verified reporting. " * 35}) + '</script></body></html>'
+        response.raise_for_status.return_value = None
+        body = extract_article("https://publisher.com/news")
+        self.assertIn("Verified reporting.", body)
+
+    @patch("news_ai_briefing.requests.get")
+    def test_short_article_without_structured_body_unverified(self, get):
+        from news_ai_briefing import extract_article
+        response = get.return_value
+        response.url = "https://publisher.com/news"
+        response.text = "<html><body><article>Short</article></body></html>"
+        response.raise_for_status.return_value = None
+        self.assertIsNone(extract_article("https://publisher.com/news"))
     def test_news_section_classification(self):
         self.assertEqual(news_section({"title": "Asian chip stocks fall on funding worries"}), "시장 변동 관련")
         self.assertEqual(news_section({"title": "Samsung HBM base die process"}), "산업·기술 동향")
