@@ -135,7 +135,18 @@ def fetch_publisher_rss(hours=24, limit=6):
             print("NEWS_PUBLISHER_RSS=" + source.replace(" ", "_") + ":" + str(count))
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_PUBLISHER_RSS_ERROR=" + source.replace(" ", "_") + ":" + type(exc).__name__)
-    results.sort(key=lambda x: x["published"], reverse=True)
+    # Rank semiconductor relevance, not just publication recency.
+    def relevance(item):
+        title = item["title"].lower()
+        strong = ("hbm", "nvhbm", "micron", "hynix", "dram", "memory chip")
+        medium = ("samsung", "nvidia", "tsmc", "semiconductor")
+        score = 3 * sum(term in title for term in strong)
+        score += sum(term in title for term in medium)
+        if "netflix" in title or "oracle" in title:
+            score -= 4
+        return score
+    results = [item for item in results if relevance(item) >= 2]
+    results.sort(key=lambda x: (relevance(x), x["published"]), reverse=True)
     return results[:limit]
 
 
