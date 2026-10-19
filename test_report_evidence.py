@@ -23,6 +23,24 @@ class EvidenceReportTests(unittest.TestCase):
         _, _, telegram = compose("morning", market, news, None)
         self.assertLess(telegram.index("HBM 기술 기사"), telegram.index("Micron shares fall"))
 
+    def test_unverified_news_in_reference_section(self):
+        news = [
+            {"title": "Micron shares fall", "source": "Headline",
+             "published": "10-19 08:00 KST", "link": "https://news.google.com/a",
+             "verification": "제목 번역만 완료 · 기사 본문 미확인"},
+            {"title": "Samsung HBM base die process", "source": "Publisher",
+             "published": "10-19 09:00 KST", "link": "https://publisher.example/a",
+             "verification": "기사 본문 확보", "analysis": {
+                 "headline_ko": "HBM 기술 기사", "summary_ko": "기술 관련 발표가 있었다.",
+                 "facts": [], "samsung_impact": "확인 불가",
+                 "hynix_impact": "확인 불가", "uncertainty": "독립 검증 필요"}},
+        ]
+        _, _, telegram = compose("morning", {}, news, None)
+        self.assertIn("[참고 뉴스 · 본문 미확인]", telegram)
+        self.assertLess(telegram.index("HBM 기술 기사"), telegram.index("Micron shares fall"))
+        self.assertIn("기사 속 주가·등락률", telegram)
+        self.assertNotIn("https://news.google.com/a", telegram)
+
     def test_evidence_tiers_and_no_causal_assertion(self):
         market = {
             "Micron": {"price": 100, "change": -5.0, "date": "2026-10-16"},
