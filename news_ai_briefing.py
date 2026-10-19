@@ -51,6 +51,34 @@ def extract_article(url):
         return None
 
 
+
+def resolve_gemini_model(key, preferred):
+    """Discover a generateContent-capable model available to this API key."""
+    try:
+        response = requests.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": key}, timeout=15
+        )
+        if response.status_code != 200:
+            LOG.warning("NEWS_AI_MODEL_LIST_HTTP=%s", response.status_code)
+            return None
+        models = response.json().get("models", [])
+        supported = [
+            m["name"].split("/", 1)[-1]
+            for m in models
+            if "generateContent" in m.get("supportedGenerationMethods", [])
+            and m.get("name", "").startswith("models/")
+        ]
+        for candidate in (preferred, "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"):
+            if candidate in supported:
+                LOG.info("NEWS_AI_MODEL_SELECTED=%s", candidate)
+                return candidate
+        LOG.warning("NEWS_AI_MODEL_UNAVAILABLE available=%s", len(supported))
+        return None
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        LOG.warning("NEWS_AI_MODEL_LIST_ERROR=%s", type(exc).__name__)
+        return None
+
 def _analyze(title, article_text):
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
@@ -59,8 +87,10 @@ def _analyze(title, article_text):
     title_only = not bool(article_text)
     if title_only:
         LOG.warning("NEWS_AI_STATUS=title_only_fallback")
-    model = os.getenv("NEWS_AI_MODEL", "gemini-2.5-flash-lite").strip()
-    if not model.replace("-", "").replace(".", "").isalnum():
+    preferred = os.getenv("NEWS_AI_MODEL", "gemini-2.5-flash-lite").strip()
+    model = resolve_gemini_model(key, preferred)
+    if not model:
+        LOG.warning("NEWS_AI_STATUS=no_available_model")
         return None
     instructions = (
         "당신은 반도체 뉴스 팩트체커다. 입력 기사에 없는 사실을 추가하지 마라. "
