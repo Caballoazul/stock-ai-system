@@ -1,0 +1,23 @@
+name: Verify News Collection (No Messages)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packages
+        run: pip install -r requirements.txt
+      - name: Check news article collection without sending messages
+        run: python verify_news_pipeline.py
