@@ -11,6 +11,8 @@ from gmail_sender import send_gmail_report
 from telegram_sender import send_telegram_message
 from kakao_sender import send_kakao_messages
 from financial_daily_appendix import append_daily_financial_review
+from valuation_collector import collect_valuations
+from per_comparison import render_per_comparison
 
 KST = ZoneInfo("Asia/Seoul")
 MODES = {"morning", "afternoon", "night"}
@@ -44,6 +46,17 @@ def main():
     market = fetch_market()
     news, news_error = fetch_news()
     title, detailed, telegram_text = compose(mode, market, news, news_error)
+    # Valuation is informational only; collection failures must not block delivery.
+    try:
+        valuations = collect_valuations()
+        per_section = render_per_comparison(valuations)
+        print("PER_COMPARISON_COLLECTED=" + ",".join(
+            f"{name}:{data.get('status', 'missing')}" for name, data in valuations.items()))
+    except Exception as exc:
+        print(f"PER_COMPARISON_FAILED={type(exc).__name__}")
+        per_section = "[3사 PER 비교]\n조회 실패 — 검증된 수치를 확보하지 못했습니다."
+    detailed += "\n\n" + per_section
+    telegram_text += "\n\n" + per_section
 
     # Failure to read Gmail must not stop existing report delivery.
     try:
