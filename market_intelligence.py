@@ -136,6 +136,7 @@ def fetch_publisher_rss(hours=24, limit=6):
             print("NEWS_PUBLISHER_RSS=" + source.replace(" ", "_") + ":" + str(count))
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_PUBLISHER_RSS_ERROR=" + source.replace(" ", "_") + ":" + type(exc).__name__)
+    print("NEWS_PUBLISHER_CANDIDATES=" + str(len(results)))
     # Rank semiconductor relevance, not just publication recency.
     def relevance(item):
         title = item["title"].lower()
