@@ -49,7 +49,7 @@ def main():
     market = fetch_market()
     news, news_error = fetch_news(market=market)
     # Only publisher article bodies may be AI summarized; missing evidence stays labeled.
-    news = enrich_news(news)
+    news = enrich_news(news, limit=6, scan_for_body=True)
     print("NEWS_AI_VERIFIED=" + str(sum(bool(item.get("analysis")) and "본문 확보" in item.get("verification", "") for item in news)))
     print("NEWS_AI_TITLE_TRANSLATED=" + str(sum(bool(item.get("analysis")) and "제목 번역만" in item.get("verification", "") for item in news)))
     title, detailed, telegram_text = compose(mode, market, news, news_error)
