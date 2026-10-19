@@ -19,11 +19,15 @@ class EvidenceReportTests(unittest.TestCase):
                 "uncertainty": "독립 검증 필요",
             }
         }]
-        _, detailed, _ = compose("morning", market, news, None)
+        _, detailed, telegram = compose("morning", market, news, None)
         for phrase in ("[기사 근거·원문 대조 필요]", "[시장 관찰]",
                        "[가설·미검증]", "[추가 확인]"):
             self.assertIn(phrase, detailed)
         self.assertIn("주가 변동을 일으켰는지는 확인되지 않았습니다", detailed)
+        for phrase in ("[핵심 뉴스·근거]", "메모리 공급 업데이트",
+                       "기사 본문 확보·AI 분석", "https://example.com/news",
+                       "인과관계 미검증"):
+            self.assertIn(phrase, telegram)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
