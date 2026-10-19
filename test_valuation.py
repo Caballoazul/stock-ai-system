@@ -42,7 +42,7 @@ class ValuationTests(unittest.TestCase):
     def test_api_failure_is_isolated(self, ticker):
         ticker.side_effect = RuntimeError('offline')
         result = collect_valuations()
-        self.assertEqual(set(result), {'Samsung', 'SK Hynix'})
+        self.assertEqual(set(result), {'Micron', 'Samsung', 'SK Hynix'})
         self.assertTrue(all(v['status'] == 'error' for v in result.values()))
         self.assertTrue(all(v['error'] == 'RuntimeError' for v in result.values()))
 
