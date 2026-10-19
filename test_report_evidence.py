@@ -1,8 +1,12 @@
 """Offline report checks: no external APIs or messages."""
 import unittest
-from insight_report import compose
+from insight_report import compose, news_section
 
 class EvidenceReportTests(unittest.TestCase):
+    def test_news_section_classification(self):
+        self.assertEqual(news_section({"title": "Asian chip stocks fall on funding worries"}), "시장 변동 관련")
+        self.assertEqual(news_section({"title": "Samsung HBM base die process"}), "산업·기술 동향")
+
     def test_evidence_tiers_and_no_causal_assertion(self):
         market = {
             "Micron": {"price": 100, "change": -5.0, "date": "2026-10-16"},
