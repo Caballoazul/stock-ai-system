@@ -272,6 +272,9 @@ def fetch_news(hours=24, limit=6, market=None):
                + "&hl=en-US&gl=US&ceid=US:en")
         try:
             response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
+            if response.status_code in (429, 500, 502, 503, 504):
+                print("NEWS_GOOGLE_FALLBACK_RETRY=" + str(response.status_code))
+                response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
             response.raise_for_status()
             root = ElementTree.fromstring(response.content)
             cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
