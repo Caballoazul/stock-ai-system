@@ -1,9 +1,30 @@
 """Send one HTML/text report through Gmail SMTP using GitHub Secrets."""
 import os
 import smtplib
+import re
 from email.message import EmailMessage
 from html import escape
 from urllib.parse import quote
+
+
+def render_report_html(report_text):
+    """Escape all report text, but show HTTP(S) article links as short anchors."""
+    pattern = re.compile(r"https?://[^\\s<>\\\"']+")
+    parts = []
+    start = 0
+    for match in pattern.finditer(report_text):
+        parts.append(escape(report_text[start:match.start()]))
+        raw = match.group(0)
+        url = raw.rstrip(".,);")
+        suffix = raw[len(url):]
+        parts.append('<a href="' + escape(url, quote=True) +
+                     '" target="_blank" rel="noopener noreferrer">원문 보기</a>' +
+                     escape(suffix))
+        start = match.end()
+    parts.append(escape(report_text[start:]))
+    return ('<html><body><div style="font-family:Arial,sans-serif;'
+            'white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere">'
+            + ''.join(parts) + '</div></body></html>')
 
 
 def send_gmail_report(subject, report_text):
@@ -18,7 +39,7 @@ def send_gmail_report(subject, report_text):
     message["To"] = address
     message["Subject"] = subject
     message.set_content(report_text)
-    html_body = '<html><body><div style="font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.65">' + escape(report_text) + '</div></body></html>'
+    html_body = render_report_html(report_text)
     message.add_alternative(html_body, subtype="html")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
         smtp.login(address, app_password)
