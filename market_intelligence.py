@@ -36,7 +36,55 @@ def fetch_market():
     return results
 
 
+def fetch_direct_news(hours=24, limit=6):
+    """GDELT DOC returns publisher URLs, unlike Google News RSS landing links."""
+    from urllib.parse import urlparse
+    from datetime import datetime
+    query = '(Micron OR NVIDIA OR "SK Hynix" OR "Samsung Electronics") (semiconductor OR memory OR HBM OR earnings)'
+    params = {"query": query, "mode": "ArtList", "format": "json",
+              "maxrecords": 50, "timespan": "1d", "sort": "DateDesc"}
+    try:
+        response = requests.get("https://api.gdeltproject.org/api/v2/doc/doc",
+                                params=params, timeout=20,
+                                headers={"User-Agent": "stock-ai-system/1.0"})
+        response.raise_for_status()
+        items = response.json().get("articles", [])
+    except (requests.RequestException, ValueError) as exc:
+        return [], type(exc).__name__
+    results, seen = [], set()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    for item in items:
+        title = (item.get("title") or "").strip()
+        link = (item.get("url") or "").strip()
+        domain = (urlparse(link).hostname or "").lower()
+        if not title or not link.startswith("https://") or not domain:
+            continue
+        if domain in {"news.google.com", "google.com"}:
+            continue
+        raw = item.get("seendate", "")
+        try:
+            published = datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            continue
+        if published < cutoff:
+            continue
+        key = title.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append({"title": title, "link": link, "source": item.get("domain") or domain,
+                        "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
+        if len(results) >= limit:
+            break
+    return results, None if results else "no_direct_articles"
+
+
 def fetch_news(hours=24, limit=6):
+    direct, direct_error = fetch_direct_news(hours=hours, limit=limit)
+    if direct:
+        return direct, None
+    print("NEWS_DIRECT_SOURCE_UNAVAILABLE=" + str(direct_error))
+    # Fallback is headlines only: Google News RSS links are NOT verified publisher bodies.
     url = ("https://news.google.com/rss/search?q="
            + quote(NEWS_QUERY + " when:1d")
            + "&hl=en-US&gl=US&ceid=US:en")
