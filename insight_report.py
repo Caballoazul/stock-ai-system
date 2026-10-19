@@ -135,9 +135,15 @@ def compose(mode, market, news, news_error):
         "• 국내 외국인·기관 수급, 오전 예측의 저장/사후 검증, NXT 가격은 아직 미구현입니다."
     )
     # Telegram-only layout: separate price observations from unverified causes.
+    us_dates = [market.get(k, {}).get("date") for k in ("SOX", "NASDAQ", "Micron")]
+    us_session = max((d for d in us_dates if isinstance(d, str) and d), default=None)
+    def session_match(item):
+        return bool(us_session and item.get("session_date") == us_session)
     verified_news = sorted(
         [n for n in news if n.get("analysis") and "본문 확보" in n.get("verification", "")],
-        key=lambda n: news_section(n) != "시장 변동 관련")
+        key=lambda n: (not session_match(n), news_section(n) != "시장 변동 관련"))
+    # Only session-matched articles can be described as evidence candidates
+    # for that US session; other verified articles remain industry context.
     def topic_key(item):
         title = str(item.get("title", "")).lower().replace("nvhbm", "hbm")
         if "hbm" in title and ("tsmc" in title or "3nm" in title or "3나노" in title):
@@ -147,14 +153,14 @@ def compose(mode, market, news, news_error):
     used_topics = {topic_key(n) for n in verified_news[:2]}
     references = []
     for item in news:
-        if item in verified_news or topic_key(item) in used_topics:
+        if item in verified_news[:2] or topic_key(item) in used_topics:
             continue
         references.append(item)
         used_topics.add(topic_key(item))
         if len(references) == 2:
             break
 
-    market_related = [n for n in verified_news if news_section(n) == "시장 변동 관련"]
+    market_related = [n for n in verified_news if session_match(n) and news_section(n) == "시장 변동 관련"]
     cause = ("• 시장 변동 관련 기사 본문은 확보했으나, 미국장 하락과의 인과관계는 미검증입니다."
              if market_related else
              "• 미국장 하락 원인 미확인: 확보한 기사로는 당일 하락 이유를 입증할 수 없습니다.")
@@ -166,7 +172,9 @@ def compose(mode, market, news, news_error):
     for item in verified_news[:2]:
         analysis = item["analysis"]
         heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
-        telegram_news.append("• [" + news_section(item) + "] " + str(heading))
+        label = ("미국장 거래일 관련" if session_match(item) else
+                 "산업·기술 및 후속 동향" if news_section(item) == "시장 변동 관련" else news_section(item))
+        telegram_news.append("• [" + label + "] " + str(heading))
         telegram_news.append("  요약: " + complete_sentence(analysis.get("summary_ko", "요약 없음"), 180))
         telegram_news.append("  삼성: " + complete_sentence(analysis.get("samsung_impact", "확인 불가"), 130))
         telegram_news.append("  하이닉스: " + complete_sentence(analysis.get("hynix_impact", "확인 불가"), 130))
@@ -179,10 +187,10 @@ def compose(mode, market, news, news_error):
         telegram_news.append("• 기사 본문 확보 실패 · 뉴스 해석 보류")
     telegram_news.append("• 기사 속 주가·등락률은 보도 시점 수치일 수 있으며, 위 종가와 다를 수 있습니다.")
     if references:
-        telegram_news.append("[참고 뉴스 · 본문 미확인]")
+        telegram_news.append("[추가 참고 뉴스 · 검증 상태 개별 표시]")
         for item in references:
             telegram_news.append("• [" + news_section(item) + "] " + str(item.get("title", "제목 없음")))
-            telegram_news.append("  제목만 참고 · 사실관계 및 기업 영향 미검증")
+            telegram_news.append("  " + ("본문 확보·AI 분석, 독립 검증 전" if item in verified_news else "제목만 참고 · 사실관계 및 기업 영향 미검증"))
             if item.get("link") and not item["link"].startswith("https://news.google.com/"):
                 telegram_news.append("  링크: " + str(item["link"]))
     telegram = (
