@@ -1,8 +1,23 @@
 """Offline report checks: no external APIs or messages."""
 import unittest
+from unittest.mock import patch
+from news_ai_briefing import enrich_news
 from insight_report import compose, news_section
 
 class EvidenceReportTests(unittest.TestCase):
+    @patch("news_ai_briefing._analyze")
+    @patch("news_ai_briefing.extract_article")
+    def test_scan_later_body_without_extra_title_ai(self, extract, analyze):
+        items = [{"title": "Article " + str(i), "link": "https://example.com/" + str(i)}
+                 for i in range(6)]
+        extract.side_effect = [None, None, None, "verified article body", None, None]
+        analyze.return_value = {"headline_ko": "확인된 기사"}
+        enriched = enrich_news(items, limit=6, scan_for_body=True)
+        self.assertEqual(extract.call_count, 6)
+        self.assertEqual(analyze.call_count, 4)
+        self.assertIn("본문 확보", enriched[3]["verification"])
+        self.assertNotIn("analysis", enriched[4])
+
     def test_news_section_classification(self):
         self.assertEqual(news_section({"title": "Asian chip stocks fall on funding worries"}), "시장 변동 관련")
         self.assertEqual(news_section({"title": "Samsung HBM base die process"}), "산업·기술 동향")
