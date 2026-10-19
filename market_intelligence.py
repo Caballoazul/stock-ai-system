@@ -237,4 +237,15 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
     if not combined:
         return [], direct_error or "no_articles"
-    return rank_market_news(combined, market, limit), None
+    # Prefer direct publisher URLs; Google News landing links cannot provide article bodies.
+    direct_links = [item for item in combined
+                    if not item.get("link", "").startswith("https://news.google.com/")]
+    google_links = [item for item in combined
+                    if item.get("link", "").startswith("https://news.google.com/")]
+    prioritized = (rank_market_news(direct_links, market, limit)
+                   + rank_market_news(google_links, market, limit))
+    selected = prioritized[:limit]
+    print("NEWS_SELECTED_DIRECT=" + str(sum(
+        not item.get("link", "").startswith("https://news.google.com/")
+        for item in selected)))
+    return selected, None
