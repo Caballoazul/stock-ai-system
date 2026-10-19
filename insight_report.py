@@ -136,7 +136,7 @@ def compose(mode, market, news, news_error):
     )
     # Telegram: concise, actionable reading order without asserting news causality.
     telegram_news = []
-    for item in sorted(news, key=lambda n: news_section(n) != "시장 변동 관련")[:2]:
+    for item in sorted(news, key=lambda n: (not (n.get("analysis") and "본문 확보" in n.get("verification", "")), news_section(n) != "시장 변동 관련"))[:2]:
         analysis = item.get("analysis") or {}
         verified_body = "본문 확보" in item.get("verification", "")
         heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
