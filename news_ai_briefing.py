@@ -5,6 +5,7 @@ the report explicitly labels the article as unverified.
 """
 import json
 import os
+import logging
 from urllib.parse import urlparse
 from html import unescape
 
@@ -12,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 
 TIMEOUT = 15
+LOG = logging.getLogger(__name__)
 
 
 def extract_article(url):
@@ -28,6 +30,7 @@ def extract_article(url):
         response.raise_for_status()
         final = urlparse(response.url)
         if final.scheme != "https" or not final.hostname or final.hostname.lower() in {"news.google.com", "google.com"}:
+            LOG.warning("NEWS_ARTICLE_FETCH=google_news_landing")
             return None
         soup = BeautifulSoup(response.text[:900000], "html.parser")
         for node in soup(["script", "style", "nav", "footer", "header", "aside"]):
@@ -38,14 +41,23 @@ def extract_article(url):
         text = " ".join(article.stripped_strings)
         text = unescape(text)
         # A few headline words are not a verified article body.
-        return text[:10000] if len(text) >= 450 else None
-    except (requests.RequestException, ValueError):
+        if len(text) < 450:
+            LOG.warning("NEWS_ARTICLE_FETCH=too_short")
+            return None
+        LOG.info("NEWS_ARTICLE_FETCH=ok")
+        return text[:10000]
+    except (requests.RequestException, ValueError) as exc:
+        LOG.warning("NEWS_ARTICLE_FETCH=error type=%s", type(exc).__name__)
         return None
 
 
 def _analyze(title, article_text):
     key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not key or not article_text:
+    if not key:
+        LOG.warning("NEWS_AI_STATUS=missing_key")
+        return None
+    if not article_text:
+        LOG.warning("NEWS_AI_STATUS=missing_article_body")
         return None
     model = os.getenv("NEWS_AI_MODEL", "gemini-2.5-flash-lite").strip()
     if not model.replace("-", "").replace(".", "").isalnum():
@@ -73,7 +85,9 @@ def _analyze(title, article_text):
             headers={"x-goog-api-key": key, "Content-Type": "application/json"},
             json=payload, timeout=35
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            LOG.warning("NEWS_AI_STATUS=http_error code=%s", response.status_code)
+            return None
         raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         data = json.loads(raw)
         required = ("headline_ko", "summary_ko", "facts",
@@ -82,8 +96,10 @@ def _analyze(title, article_text):
             return None
         if not isinstance(data.get("facts"), list):
             return None
+        LOG.info("NEWS_AI_STATUS=ok")
         return data
-    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
+        LOG.warning("NEWS_AI_STATUS=error type=%s", type(exc).__name__)
         return None
 
 
