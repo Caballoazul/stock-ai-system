@@ -149,17 +149,25 @@ def _analyze(title, article_text):
         return None
 
 
-def enrich_news(news, limit=3):
-    """Keep remaining articles unchanged; only label analyzed articles as verified."""
+def enrich_news(news, limit=3, scan_for_body=False):
+    """Scan more candidate URLs for readable bodies without treating titles as evidence.
+
+    When scan_for_body=True, keep title-only translation restricted to the first
+    three items, while allowing later articles with accessible bodies to be analyzed.
+    """
     result = []
     for idx, item in enumerate(news):
         record = dict(item)
         if idx < limit:
             body = extract_article(item.get("link", ""))
-            analysis = _analyze(item.get("title", ""), body)
+            if body or idx < 3 or not scan_for_body:
+                analysis = _analyze(item.get("title", ""), body)
+            else:
+                analysis = None
             if analysis:
                 record["analysis"] = analysis
-                record["verification"] = ("기사 본문 확보·AI 요약 (원문 대조 권장)" if body else "제목 번역만 완료 · 기사 본문 미확인")
+                record["verification"] = ("기사 본문 확보·AI 요약 (원문 대조 권장)"
+                                          if body else "제목 번역만 완료 · 기사 본문 미확인")
             else:
                 record["verification"] = "본문 미확인 또는 AI 분석 불가"
         result.append(record)
