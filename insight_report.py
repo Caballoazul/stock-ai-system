@@ -177,7 +177,7 @@ def compose(mode, market, news, news_error):
             telegram_news.append("  원문: " + str(item["link"]))
     if not verified_news:
         telegram_news.append("• 기사 본문 확보 실패 · 뉴스 해석 보류")
-    telegram_news.append("• 기사 속 가격은 보도 시점 수치일 수 있으며, 위 종가와 다를 수 있습니다.")
+    telegram_news.append("• 기사 속 주가·등락률은 보도 시점 수치일 수 있으며, 위 종가와 다를 수 있습니다.")
     if references:
         telegram_news.append("[참고 뉴스 · 본문 미확인]")
         for item in references:
