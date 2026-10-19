@@ -236,8 +236,6 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_GOOGLE_FALLBACK=" + str(len(fallback)))
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
-    if not combined:
-        return [], direct_error or "no_articles"
     # Google News landing URLs are not verified publisher bodies. Never label them direct.
     # Reserve candidate space for market-move headlines when direct evidence is sparse.
     if len(combined) < limit + 2:
@@ -267,6 +265,8 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_MARKET_FOCUSED=" + str(len(focused)))
         except (requests.RequestException, ElementTree.ParseError) as exc:
             print("NEWS_MARKET_FOCUSED_ERROR=" + type(exc).__name__)
+    if not combined:
+        return [], direct_error or "no_articles"
     # Prefer direct publisher URLs; Google News landing links cannot provide article bodies.
     direct_links = [item for item in combined
                     if not item.get("link", "").startswith("https://news.google.com/")]
