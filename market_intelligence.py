@@ -263,7 +263,7 @@ def fetch_news(hours=24, limit=6, market=None):
     session_news = fetch_session_market_news(market or {}, limit=max(limit * 2, 8)) if market else []
     add(session_news, "market_session")
     print("NEWS_SOURCES=publisher:" + str(len(publisher)) + ",gdelt:" + str(len(direct)))
-    if len(combined) < limit:
+    if len(publisher) + len(direct) < limit:
         url = ("https://news.google.com/rss/search?q="
                + quote(NEWS_QUERY + " when:1d")
                + "&hl=en-US&gl=US&ceid=US:en")
@@ -326,8 +326,8 @@ def fetch_news(hours=24, limit=6, market=None):
                     if not item.get("link", "").startswith("https://news.google.com/")]
     google_links = [item for item in combined
                     if item.get("link", "").startswith("https://news.google.com/")]
-    prioritized = (rank_market_news(direct_links, market, limit)
-                   + rank_market_news(google_links, market, limit))
+    prioritized = (rank_market_news(direct_links, market, max(limit * 3, 12))
+                   + rank_market_news(google_links, market, max(limit * 3, 12)))
     if session_news:
         # Preserve space for session-day market reporting even when recent
         # industry headlines are more numerous; direct links still lead.
@@ -335,6 +335,8 @@ def fetch_news(hours=24, limit=6, market=None):
         market_candidates = [n for n in prioritized if " ".join(n["title"].lower().split()) in session_titles]
         other_candidates = [n for n in prioritized if " ".join(n["title"].lower().split()) not in session_titles]
         selected = (market_candidates[:min(2, limit)] + other_candidates)[:limit]
+        if len(selected) < limit:
+            selected += market_candidates[min(2, limit):limit - len(selected) + min(2, limit)]
     else:
         selected = prioritized[:limit]
     print("NEWS_SELECTED_MARKET_SESSION=" + str(sum(bool(n.get("session_date")) for n in selected)))
