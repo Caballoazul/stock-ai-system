@@ -41,6 +41,28 @@ class EvidenceReportTests(unittest.TestCase):
         self.assertIn("기사 속 주가·등락률", telegram)
         self.assertNotIn("https://news.google.com/a", telegram)
 
+    def test_telegram_market_cause_and_topic_deduplication(self):
+        news = [
+            {"title": "Samsung Micron Hynix TSMC 3nm NVHBM base die",
+             "source": "Publisher", "published": "10-19", "link": "https://example.com/1",
+             "verification": "기사 본문 확보", "analysis": {
+                 "headline_ko": "HBM 기술 동향", "summary_ko": "HBM 기술 소식.",
+                 "facts": [], "samsung_impact": "확인 불가",
+                 "hynix_impact": "확인 불가", "uncertainty": "추가 검증 필요"}},
+            {"title": "NVIDIA TSMC 3nm NVHBM base dies", "source": "Other",
+             "published": "10-19", "link": "https://example.com/2",
+             "verification": "본문 미확인"},
+            {"title": "Micron shares fall on market worries", "source": "Other",
+             "published": "10-19", "link": "https://example.com/3",
+             "verification": "본문 미확인"},
+        ]
+        _, _, telegram = compose("morning", {}, news, None)
+        self.assertIn("[미국장 변동 원인]", telegram)
+        self.assertIn("미국장 하락 원인 미확인", telegram)
+        self.assertIn("[국내 영향·비교]", telegram)
+        self.assertIn("Micron shares fall", telegram)
+        self.assertNotIn("NVIDIA TSMC 3nm NVHBM base dies", telegram)
+
     def test_evidence_tiers_and_no_causal_assertion(self):
         market = {
             "Micron": {"price": 100, "change": -5.0, "date": "2026-10-16"},
