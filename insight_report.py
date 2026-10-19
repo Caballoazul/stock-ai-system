@@ -34,6 +34,23 @@ def complete_sentence(value, max_chars=180):
     return text  # Prefer complete meaning over arbitrary truncation.
 
 
+def news_section(item):
+    """Heuristic category, not a verified causal explanation."""
+    title = str(item.get("title", "")).lower()
+    market_terms = ("shares", "stocks", "selloff", "slump", "decline", "fall",
+                    "drop", "rally", "funding", "earnings", "guidance",
+                    "downgrade", "upgrade", "tariff", "market", "investors",
+                    "주가", "하락", "급락", "실적")
+    industry_terms = ("hbm", "nvhbm", "base die", "process", "node",
+                      "manufacturing", "packaging", "foundry", "supply chain",
+                      "공정", "양산", "공급망")
+    if any(term in title for term in market_terms):
+        return "시장 변동 관련"
+    if any(term in title for term in industry_terms):
+        return "산업·기술 동향"
+    return "기타 반도체 뉴스"
+
+
 def compose(mode, market, news, news_error):
     now = datetime.now(KST)
     morning = mode == "morning"
@@ -42,11 +59,12 @@ def compose(mode, market, news, news_error):
     kr = [line(k, market) for k in ("Samsung", "SK Hynix")]
     headlines = []
     for i, n in enumerate(news, 1):
+        section = news_section(n)
         analysis = n.get("analysis")
         if analysis:
             facts = analysis.get("facts", [])
             headlines.append(
-                f"{i}. {analysis['headline_ko']}\n"
+                f"{i}. [{section}] {analysis['headline_ko']}\n"
                 f"   한국어 요약: {analysis['summary_ko']}\n"
                 + "".join(f"   핵심 사실: {fact}\n" for fact in facts[:3])
                 + f"   삼성전자 영향: {analysis['samsung_impact']}\n"
@@ -58,7 +76,7 @@ def compose(mode, market, news, news_error):
             )
         else:
             headlines.append(
-                f"{i}. [원문 미검증] {n['title']}\n"
+                f"{i}. [{section} · 원문 미검증] {n['title']}\n"
                 f"   본문 미확인: 번역·요약·기업 영향 분석 보류\n"
                 f"   출처: {n['source']} | {n['published']}\n"
                 f"   원문: {n['link']}"
@@ -118,11 +136,11 @@ def compose(mode, market, news, news_error):
     )
     # Telegram: concise, actionable reading order without asserting news causality.
     telegram_news = []
-    for item in news[:2]:
+    for item in sorted(news, key=lambda n: news_section(n) != "시장 변동 관련")[:2]:
         analysis = item.get("analysis") or {}
         verified_body = "본문 확보" in item.get("verification", "")
         heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
-        telegram_news.append("• " + str(heading)[:90])
+        telegram_news.append("• [" + news_section(item) + "] " + str(heading)[:90])
         if verified_body:
             telegram_news.append("  요약: " + complete_sentence(analysis.get("summary_ko", "요약 없음"), 180))
             telegram_news.append("  삼성: " + complete_sentence(analysis.get("samsung_impact", "확인 불가"), 130))
