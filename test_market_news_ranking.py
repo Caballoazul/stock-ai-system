@@ -1,6 +1,7 @@
 """Offline deterministic ranking test. Does not send messages or call APIs."""
 import unittest
-from market_intelligence import market_news_score, rank_market_news
+from unittest.mock import patch
+from market_intelligence import market_news_score, rank_market_news, fetch_news
 
 class RankingTests(unittest.TestCase):
     def test_market_catalyst_prioritized(self):
@@ -14,6 +15,20 @@ class RankingTests(unittest.TestCase):
         self.assertIn("Micron", ranked[0]["title"])
         self.assertGreater(market_news_score(ranked[0], market),
                            market_news_score(ranked[-1], market))
+
+    @patch("market_intelligence.fetch_direct_news")
+    @patch("market_intelligence.fetch_publisher_rss")
+    def test_sources_merge_even_when_publisher_has_article(self, rss, gdelt):
+        rss.return_value = [{"title": "Samsung HBM supply outlook",
+                             "link": "https://publisher.example/a", "source": "Publisher",
+                             "published": "10-19 09:00 KST"}]
+        gdelt.return_value = ([{"title": "Micron shares fall on memory demand",
+                                "link": "https://gdelt.example/b", "source": "GDELT",
+                                "published": "10-19 08:00 KST"}], None)
+        items, error = fetch_news(limit=2, market={"Micron": {"change": -5}})
+        self.assertIsNone(error)
+        self.assertEqual(len(items), 2)
+        self.assertEqual({x["source"] for x in items}, {"Publisher", "GDELT"})
 
     def test_no_causality_claim(self):
         item = {"title": "Micron stock falls amid demand concerns"}
