@@ -1,0 +1,55 @@
+name: Financial Validation Preview (Manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  financial-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packages
+        run: pip install -r requirements.txt
+      - name: Run regression tests
+        run: python -m unittest discover -s . -p 'test_*.py' -q
+      - name: Export current market snapshot
+        run: python export_market_analysis.py
+      - name: Attach historical financial review to preview only
+        run: |
+          python financial_validation_integration.py \
+            --market reports/market_analysis.json \
+            --fixture tests/fixtures/financial_validation_test_v1.json \
+            --output reports/market_analysis_financial_preview.json
+      - name: Validate preview and historical labeling
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          original = json.loads(Path('reports/market_analysis.json').read_text(encoding='utf-8'))
+          preview = json.loads(Path('reports/market_analysis_financial_preview.json').read_text(encoding='utf-8'))
+          fv = preview['financial_validation']
+          assert fv['data_role'] == 'historical_reference'
+          assert fv['current_period_verified'] is False
+          assert fv['company']['corp_code'] == '00164779'
+          assert str(fv['company']['year']) == '2026'
+          assert fv['company']['report_code'] == '11012'
+          assert 'financial_validation' not in original
+          assert {k: v for k, v in preview.items() if k != 'financial_validation'} == original
+          print('FINANCIAL_PREVIEW_VALIDATED')
+          PY
+      - name: Upload preview artifact (no commit or message sending)
+        uses: actions/upload-artifact@v4
+        with:
+          name: financial-validation-preview
+          path: reports/market_analysis_financial_preview.json
+          if-no-files-found: error
+          retention-days: 7
