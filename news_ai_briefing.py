@@ -20,6 +20,10 @@ def extract_article(url):
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:
         return None
+    # Google News RSS links are discovery metadata, not article body URLs.
+    if parsed.hostname.lower() in {"news.google.com", "google.com"}:
+        LOG.info("NEWS_ARTICLE_FETCH=discovery_only")
+        return None
     # Never fetch local/private services through external news links.
     host = parsed.hostname.lower()
     if host in {"localhost", "127.0.0.1", "::1"} or host.endswith((".local", ".internal")):
