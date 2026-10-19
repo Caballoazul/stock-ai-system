@@ -17,10 +17,11 @@ try:
     models = listing.json().get("models", [])
     supported = [m["name"] for m in models if "generateContent" in m.get("supportedGenerationMethods", [])]
     print("GEMINI_GENERATE_MODELS=" + str(len(supported)))
-    preferred = ["models/gemini-2.5-flash-lite", "models/gemini-2.5-flash"]
+    preferred = ["models/gemini-3.5-flash-lite", "models/gemini-3.5-flash", "models/gemini-2.5-flash"]
     selected = next((name for name in preferred if name in supported), None)
-    if selected is None and supported:
-        selected = supported[0]
+    if selected is None:
+        print("GEMINI_CHECK=FAIL reason=preferred_models_unavailable")
+        sys.exit(1)
     if not selected:
         print("GEMINI_CHECK=FAIL reason=no_supported_model")
         sys.exit(1)
