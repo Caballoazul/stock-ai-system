@@ -81,7 +81,69 @@ def fetch_direct_news(hours=24, limit=6):
     return results, None if results else "no_direct_articles"
 
 
+
+def fetch_publisher_rss(hours=24, limit=6):
+    """Direct publisher RSS links; no Google News redirect and no API key."""
+    from html import unescape
+    from urllib.parse import urlparse
+    feeds = [
+        ("TechCrunch", "https://techcrunch.com/feed/"),
+        ("Tom's Hardware", "https://www.tomshardware.com/feeds/all"),
+        ("Electronics Weekly", "https://www.electronicsweekly.com/news/feed/"),
+        ("CNBC", "https://www.cnbc.com/id/19854910/device/rss/rss.html"),
+    ]
+    terms = ("micron", "nvidia", "hynix", "samsung", "hbm",
+             "semiconductor", "memory chip", "dram", "tsmc")
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    results, seen = [], set()
+    for source, feed_url in feeds:
+        try:
+            response = requests.get(feed_url, timeout=12,
+                                    headers={"User-Agent": "Mozilla/5.0"})
+            response.raise_for_status()
+            root = ElementTree.fromstring(response.content)
+            entries = root.findall("./channel/item")
+            entries += root.findall("{http://www.w3.org/2005/Atom}entry")
+            count = 0
+            for item in entries:
+                title = unescape((item.findtext("title") or item.findtext("{http://www.w3.org/2005/Atom}title") or "").strip())
+                link = (item.findtext("link") or "").strip()
+                if not link:
+                    atom_link = item.find("{http://www.w3.org/2005/Atom}link")
+                    link = atom_link.get("href", "") if atom_link is not None else ""
+                date = (item.findtext("pubDate") or item.findtext("{http://www.w3.org/2005/Atom}published")
+                        or item.findtext("{http://www.w3.org/2005/Atom}updated") or "")
+                try:
+                    published = parsedate_to_datetime(date).astimezone(timezone.utc)
+                except (ValueError, TypeError, OverflowError):
+                    try:
+                        published = datetime.fromisoformat(date.replace("Z", "+00:00")).astimezone(timezone.utc)
+                    except (ValueError, TypeError):
+                        continue
+                host = (urlparse(link).hostname or "").lower()
+                if (published < cutoff or not link.startswith("https://")
+                    or host in {"news.google.com", "google.com"}
+                    or not any(term in title.lower() for term in terms)):
+                    continue
+                key = " ".join(title.lower().split())
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append({"title": title, "link": link, "source": source,
+                                "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
+                count += 1
+            print("NEWS_PUBLISHER_RSS=" + source.replace(" ", "_") + ":" + str(count))
+        except (requests.RequestException, ElementTree.ParseError) as exc:
+            print("NEWS_PUBLISHER_RSS_ERROR=" + source.replace(" ", "_") + ":" + type(exc).__name__)
+    results.sort(key=lambda x: x["published"], reverse=True)
+    return results[:limit]
+
+
 def fetch_news(hours=24, limit=6):
+    publisher = fetch_publisher_rss(hours=hours, limit=limit)
+    if publisher:
+        print("NEWS_SOURCE=publisher_rss count=" + str(len(publisher)))
+        return publisher, None
     direct, direct_error = fetch_direct_news(hours=hours, limit=limit)
     if direct:
         return direct, None
