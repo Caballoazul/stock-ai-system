@@ -28,7 +28,7 @@ def extract_article(url):
                                 headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
         final = urlparse(response.url)
-        if final.scheme != "https" or not final.hostname:
+        if final.scheme != "https" or not final.hostname or final.hostname.lower() in {"news.google.com", "google.com"}:
             return None
         soup = BeautifulSoup(response.text[:900000], "html.parser")
         for node in soup(["script", "style", "nav", "footer", "header", "aside"]):
