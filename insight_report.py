@@ -134,26 +134,35 @@ def compose(mode, market, news, news_error):
         "• PER 비교: 기존 forward/trailing 기간 불일치 가능성 때문에 검증 전까지 목표주가를 제외합니다.\n"
         "• 국내 외국인·기관 수급, 오전 예측의 저장/사후 검증, NXT 가격은 아직 미구현입니다."
     )
-    # Telegram: concise, actionable reading order without asserting news causality.
+    # Telegram: analyzed article bodies first; title-only links are references.
+    verified_news = sorted(
+        [n for n in news if n.get("analysis") and "본문 확보" in n.get("verification", "")],
+        key=lambda n: news_section(n) != "시장 변동 관련")
+    reference_news = [n for n in news if n not in verified_news]
     telegram_news = []
-    for item in sorted(news, key=lambda n: (not (n.get("analysis") and "본문 확보" in n.get("verification", "")), news_section(n) != "시장 변동 관련"))[:2]:
-        analysis = item.get("analysis") or {}
-        verified_body = "본문 확보" in item.get("verification", "")
+    for item in verified_news[:2]:
+        analysis = item["analysis"]
         heading = analysis.get("headline_ko") or item.get("title", "제목 없음")
-        telegram_news.append("• [" + news_section(item) + "] " + str(heading)[:90])
-        if verified_body:
-            telegram_news.append("  요약: " + complete_sentence(analysis.get("summary_ko", "요약 없음"), 180))
-            telegram_news.append("  삼성: " + complete_sentence(analysis.get("samsung_impact", "확인 불가"), 130))
-            telegram_news.append("  하이닉스: " + complete_sentence(analysis.get("hynix_impact", "확인 불가"), 130))
-            telegram_news.append("  근거: 기사 본문 확보·AI 분석, 독립 검증 전")
-        else:
-            telegram_news.append("  근거: 원문 미확인·기업별 영향 판단 보류")
+        telegram_news.append("• [" + news_section(item) + "] " + str(heading))
+        telegram_news.append("  요약: " + complete_sentence(analysis.get("summary_ko", "요약 없음"), 180))
+        telegram_news.append("  삼성: " + complete_sentence(analysis.get("samsung_impact", "확인 불가"), 130))
+        telegram_news.append("  하이닉스: " + complete_sentence(analysis.get("hynix_impact", "확인 불가"), 130))
+        telegram_news.append("  근거: 기사 본문 확보·AI 분석, 독립 검증 전")
         telegram_news.append("  출처: " + str(item.get("source", "미확인"))
                              + " / " + str(item.get("published", "시각 미확인")))
         if item.get("link"):
             telegram_news.append("  원문: " + str(item["link"]))
-    if not telegram_news:
-        telegram_news.append("• 관련 기사 없음 — 원인 분석 보류")
+    if not verified_news:
+        telegram_news.append("• 본문을 확보한 핵심 기사가 없습니다. 원인 분석을 보류합니다.")
+    telegram_news.append("• 기사 속 주가·등락률은 보도 시점 수치일 수 있습니다.")
+    telegram_news.append("  실제 종가는 위 시장 지표의 기준일·가격을 우선 확인하세요.")
+    if reference_news:
+        telegram_news.append("[참고 뉴스 · 본문 미확인]")
+        for item in reference_news[:2]:
+            telegram_news.append("• [" + news_section(item) + "] " + str(item.get("title", "제목 없음")))
+            telegram_news.append("  제목만 참고 · 사실관계 및 기업 영향 미검증")
+            if item.get("link") and not item["link"].startswith("https://news.google.com/"):
+                telegram_news.append("  링크: " + str(item["link"]))
     telegram = (
         f"[{title}]\\n{now:%m/%d %H:%M} KST\\n"
         + "\\n".join(us[:4])
