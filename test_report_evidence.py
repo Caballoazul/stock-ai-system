@@ -37,6 +37,12 @@ class EvidenceReportTests(unittest.TestCase):
         response.text = "<html><body><article>Short</article></body></html>"
         response.raise_for_status.return_value = None
         self.assertIsNone(extract_article("https://publisher.com/news"))
+    @patch("news_ai_briefing.requests.get")
+    def test_google_news_landing_never_fetches_body(self, get):
+        from news_ai_briefing import extract_article
+        self.assertIsNone(extract_article("https://news.google.com/rss/articles/example"))
+        get.assert_not_called()
+
     def test_news_section_classification(self):
         self.assertEqual(news_section({"title": "Asian chip stocks fall on funding worries"}), "시장 변동 관련")
         self.assertEqual(news_section({"title": "Samsung HBM base die process"}), "산업·기술 동향")
