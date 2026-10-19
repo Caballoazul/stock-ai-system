@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 def render_report_html(report_text):
     """Escape all report text, but show HTTP(S) article links as short anchors."""
-    pattern = re.compile(r"https?://[^\\s<>\\\"']+")
+    pattern = re.compile(r"https?://[^\s<>\"']+")
     parts = []
     start = 0
     for match in pattern.finditer(report_text):
