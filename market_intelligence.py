@@ -189,41 +189,52 @@ def rank_market_news(items, market=None, limit=6):
 
 
 def fetch_news(hours=24, limit=6, market=None):
-    publisher = fetch_publisher_rss(hours=hours, limit=limit)
-    if publisher:
-        print("NEWS_SOURCE=publisher_rss count=" + str(len(publisher)))
-        return rank_market_news(publisher, market, limit), None
-    direct, direct_error = fetch_direct_news(hours=hours, limit=limit)
-    if direct:
-        return rank_market_news(direct, market, limit), None
-    print("NEWS_DIRECT_SOURCE_UNAVAILABLE=" + str(direct_error))
-    # Fallback is headlines only: Google News RSS links are NOT verified publisher bodies.
-    url = ("https://news.google.com/rss/search?q="
-           + quote(NEWS_QUERY + " when:1d")
-           + "&hl=en-US&gl=US&ceid=US:en")
-    try:
-        response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
-        response.raise_for_status()
-        root = ElementTree.fromstring(response.content)
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-        articles = []
-        seen = set()
-        for item in root.findall("./channel/item"):
-            title = (item.findtext("title") or "").strip()
-            link = (item.findtext("link") or "").strip()
-            source = item.findtext("source") or "Google News RSS"
-            raw_date = item.findtext("pubDate") or ""
-            try:
-                published = parsedate_to_datetime(raw_date).astimezone(timezone.utc)
-            except Exception:
+    """Combine publisher RSS and GDELT; supplement with Google News when sparse."""
+    publisher = fetch_publisher_rss(hours=hours, limit=max(limit * 3, 12))
+    direct, direct_error = fetch_direct_news(hours=hours, limit=max(limit * 3, 12))
+    combined, seen = [], set()
+
+    def add(items, category):
+        for item in items:
+            title = " ".join((item.get("title") or "").lower().split())
+            link = item.get("link", "")
+            if not title or not link or title in seen:
                 continue
-            if not title or not link or published < cutoff or title.lower() in seen:
-                continue
-            seen.add(title.lower())
-            articles.append({"title": title, "link": link, "source": source,
-                             "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
-            if len(articles) >= limit:
-                break
-        return rank_market_news(articles, market, limit), None
-    except Exception as exc:
-        return [], type(exc).__name__
+            seen.add(title)
+            record = dict(item)
+            record["category"] = category
+            combined.append(record)
+
+    add(publisher, "semiconductor")
+    add(direct, "semiconductor")
+    print("NEWS_SOURCES=publisher:" + str(len(publisher)) + ",gdelt:" + str(len(direct)))
+    if len(combined) < limit:
+        url = ("https://news.google.com/rss/search?q="
+               + quote(NEWS_QUERY + " when:1d")
+               + "&hl=en-US&gl=US&ceid=US:en")
+        try:
+            response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
+            response.raise_for_status()
+            root = ElementTree.fromstring(response.content)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+            fallback = []
+            for item in root.findall("./channel/item"):
+                title = (item.findtext("title") or "").strip()
+                link = (item.findtext("link") or "").strip()
+                raw_date = item.findtext("pubDate") or ""
+                try:
+                    published = parsedate_to_datetime(raw_date).astimezone(timezone.utc)
+                except (ValueError, TypeError, OverflowError):
+                    continue
+                if not title or not link or published < cutoff:
+                    continue
+                fallback.append({"title": title, "link": link,
+                                 "source": item.findtext("source") or "Google News RSS",
+                                 "published": published.astimezone(KST).strftime("%m-%d %H:%M KST")})
+            add(fallback, "semiconductor")
+            print("NEWS_GOOGLE_FALLBACK=" + str(len(fallback)))
+        except (requests.RequestException, ElementTree.ParseError) as exc:
+            print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
+    if not combined:
+        return [], direct_error or "no_articles"
+    return rank_market_news(combined, market, limit), None
