@@ -61,6 +61,23 @@ def compose(mode, market, news, news_error):
             clues.append("마이크론과 반도체지수가 같은 방향입니다. 동반 움직임만으로 원인을 확정할 수는 없습니다.")
     else:
         clues.append("미국 종가 일부를 확인하지 못해 방향성 판단을 보류합니다.")
+    # Evidence tiers: a verified article body is not proof of market causality.
+    evidence = []
+    verified = [n for n in news if n.get("analysis") and "본문 확보" in n.get("verification", "")]
+    if verified:
+        for n in verified[:2]:
+            analysis = n["analysis"]
+            facts = analysis.get("facts") or []
+            if facts:
+                evidence.append("• [기사 근거·원문 대조 필요] " + str(facts[0])[:220]
+                                + " (출처: " + str(n.get("source", "미확인")) + ")")
+            else:
+                evidence.append("• [기사 본문 확보] " + str(analysis.get("headline_ko", n["title"]))[:180])
+    else:
+        evidence.append("• [기사 근거 부족] 분석 가능한 기사 본문을 확보하지 못했습니다.")
+    evidence.append("• [시장 관찰] " + clues[0])
+    evidence.append("• [가설·미검증] 관련 뉴스가 당일 주가 변동을 일으켰는지는 확인되지 않았습니다.")
+    evidence.append("• [추가 확인] 발표 시각과 가격 반응, 기업 공시·실적·가이던스 등 독립 근거를 대조해야 합니다.")
     if not morning:
         clues.append("오전 예측 기록과 국내 투자자별 매매 데이터가 연결되지 않아 전망 적중 여부·수급은 아직 검증할 수 없습니다.")
     details = (
