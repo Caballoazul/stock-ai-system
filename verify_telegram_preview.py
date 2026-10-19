@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 def main():
     market = fetch_market()
     news, error = fetch_news(hours=24, limit=6, market=market)
-    enriched = enrich_news(news, limit=3)
+    enriched = enrich_news(news, limit=6, scan_for_body=True)
     _, _, telegram = compose("morning", market, enriched, error)
     print("PREVIEW_ARTICLES=" + str(len(news)))
     print("PREVIEW_BODY_ANALYZED=" + str(sum(
