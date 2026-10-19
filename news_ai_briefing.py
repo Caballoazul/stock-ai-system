@@ -69,7 +69,7 @@ def resolve_gemini_model(key, preferred):
             if "generateContent" in m.get("supportedGenerationMethods", [])
             and m.get("name", "").startswith("models/")
         ]
-        for candidate in (preferred, "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"):
+        for candidate in (preferred, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"):
             if candidate in supported:
                 LOG.info("NEWS_AI_MODEL_SELECTED=%s", candidate)
                 return candidate
@@ -125,7 +125,8 @@ def _analyze(title, article_text):
             json=payload, timeout=35
         )
         if response.status_code != 200:
-            LOG.warning("NEWS_AI_STATUS=http_error code=%s", response.status_code)
+            error = response.json().get("error", {}) if "json" in response.headers.get("content-type", "") else {}
+            LOG.warning("NEWS_AI_STATUS=http_error code=%s reason=%s", response.status_code, str(error.get("status", "unknown"))[:50])
             return None
         raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         data = json.loads(raw)
