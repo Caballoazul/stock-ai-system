@@ -134,11 +134,34 @@ def compose(mode, market, news, news_error):
         "• PER 비교: 기존 forward/trailing 기간 불일치 가능성 때문에 검증 전까지 목표주가를 제외합니다.\n"
         "• 국내 외국인·기관 수급, 오전 예측의 저장/사후 검증, NXT 가격은 아직 미구현입니다."
     )
-    # Telegram: analyzed article bodies first; title-only links are references.
+    # Telegram-only layout: separate price observations from unverified causes.
     verified_news = sorted(
         [n for n in news if n.get("analysis") and "본문 확보" in n.get("verification", "")],
         key=lambda n: news_section(n) != "시장 변동 관련")
-    reference_news = [n for n in news if n not in verified_news]
+    def topic_key(item):
+        title = str(item.get("title", "")).lower().replace("nvhbm", "hbm")
+        if "hbm" in title and ("tsmc" in title or "3nm" in title or "3나노" in title):
+            return "tsmc-hbm-base-die"
+        return " ".join(sorted(set(__import__("re").findall(r"[a-z0-9가-힣]{4,}", title))))[:120]
+
+    used_topics = {topic_key(n) for n in verified_news[:2]}
+    references = []
+    for item in news:
+        if item in verified_news or topic_key(item) in used_topics:
+            continue
+        references.append(item)
+        used_topics.add(topic_key(item))
+        if len(references) == 2:
+            break
+
+    market_related = [n for n in verified_news if news_section(n) == "시장 변동 관련"]
+    cause = ("• 시장 변동 관련 기사 본문은 확보했으나, 미국장 하락과의 인과관계는 미검증입니다."
+             if market_related else
+             "• 미국장 하락 원인 미확인: 확보한 기사로는 당일 하락 이유를 입증할 수 없습니다.")
+    compare = "• 미국과 한국 시장의 거래일이 다르므로 종가·등락률을 구분해 비교해야 합니다."
+    if mu is not None and sox is not None:
+        compare += "\\n• " + clues[0]
+
     telegram_news = []
     for item in verified_news[:2]:
         analysis = item["analysis"]
@@ -153,12 +176,11 @@ def compose(mode, market, news, news_error):
         if item.get("link"):
             telegram_news.append("  원문: " + str(item["link"]))
     if not verified_news:
-        telegram_news.append("• 본문을 확보한 핵심 기사가 없습니다. 원인 분석을 보류합니다.")
-    telegram_news.append("• 기사 속 주가·등락률은 보도 시점 수치일 수 있습니다.")
-    telegram_news.append("  실제 종가는 위 시장 지표의 기준일·가격을 우선 확인하세요.")
-    if reference_news:
+        telegram_news.append("• 기사 본문 확보 실패 · 뉴스 해석 보류")
+    telegram_news.append("• 기사 속 가격은 보도 시점 수치일 수 있으며, 위 종가와 다를 수 있습니다.")
+    if references:
         telegram_news.append("[참고 뉴스 · 본문 미확인]")
-        for item in reference_news[:2]:
+        for item in references:
             telegram_news.append("• [" + news_section(item) + "] " + str(item.get("title", "제목 없음")))
             telegram_news.append("  제목만 참고 · 사실관계 및 기업 영향 미검증")
             if item.get("link") and not item["link"].startswith("https://news.google.com/"):
@@ -166,10 +188,10 @@ def compose(mode, market, news, news_error):
     telegram = (
         f"[{title}]\\n{now:%m/%d %H:%M} KST\\n"
         + "\\n".join(us[:4])
+        + "\\n\\n[미국장 변동 원인]\\n" + cause
         + "\\n\\n[국내 종목]\\n" + "\\n".join(kr)
-        + "\\n\\n[시장 관찰]\\n• " + clues[0]
+        + "\\n\\n[국내 영향·비교]\\n" + compare
         + "\\n\\n[핵심 뉴스·근거]\\n" + "\\n".join(telegram_news)
-        + "\\n\\n[판단 유보] 뉴스와 당일 등락의 인과관계 미검증. "
-          "공시·실적·발표 시각 대조 필요."
+        + "\\n\\n[추가 확인] 발표 시각·기업 공시·실적을 대조해야 합니다."
     )
     return title,details,telegram
