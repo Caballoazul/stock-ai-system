@@ -1,0 +1,23 @@
+name: Verify Report Tests (No Messages)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packages
+        run: pip install -r requirements.txt
+      - name: Run offline ranking and report tests (no messages)
+        run: python -m unittest test_market_news_ranking test_report_evidence -v
