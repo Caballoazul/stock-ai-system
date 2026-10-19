@@ -1,7 +1,7 @@
 """Offline deterministic ranking test. Does not send messages or call APIs."""
 import unittest
 from unittest.mock import patch
-from market_intelligence import market_news_score, rank_market_news, fetch_news
+from market_intelligence import market_news_score, rank_market_news, fetch_news, fetch_session_market_news
 
 class RankingTests(unittest.TestCase):
     def test_market_catalyst_prioritized(self):
@@ -67,6 +67,48 @@ class RankingTests(unittest.TestCase):
         self.assertIn("Micron shares fall", items[0]["title"])
         self.assertTrue(items[0]["link"].startswith("https://news.google.com/"))
         self.assertEqual(get.call_count, 2)
+
+    @patch("market_intelligence.requests.get")
+    def test_session_news_uses_us_close_date_and_excludes_later_news(self, get):
+        from unittest.mock import Mock
+        xml = b"""<rss><channel>
+        <item><title>Micron shares fall on memory outlook</title>
+        <link>https://news.google.com/rss/articles/session</link>
+        <pubDate>Fri, 16 Oct 2026 20:30:00 GMT</pubDate></item>
+        <item><title>Micron shares fall on later news</title>
+        <link>https://news.google.com/rss/articles/later</link>
+        <pubDate>Mon, 19 Oct 2026 07:00:00 GMT</pubDate></item>
+        </channel></rss>"""
+        get.return_value = Mock(content=xml)
+        market = {"SOX": {"date": "2026-10-16", "change": -3.8},
+                  "Micron": {"date": "2026-10-16", "change": -5.6}}
+        items = fetch_session_market_news(market)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["session_date"], "2026-10-16")
+        self.assertIn("after%3A2026-10-16", get.call_args.args[0])
+        self.assertIn("before%3A2026-10-18", get.call_args.args[0])
+
+    @patch("market_intelligence.fetch_session_market_news")
+    @patch("market_intelligence.requests.get")
+    @patch("market_intelligence.fetch_direct_news")
+    @patch("market_intelligence.fetch_publisher_rss")
+    def test_session_news_reserved_even_when_industry_news_is_full(self, rss, gdelt, get, session):
+        from unittest.mock import Mock
+        rss.return_value = [
+            {"title": "Samsung HBM supply " + str(i),
+             "link": "https://publisher.example/" + str(i),
+             "source": "Publisher", "published": "10-19 09:00 KST"}
+            for i in range(6)]
+        gdelt.return_value = ([], "HTTP_429")
+        session.return_value = [
+            {"title": "Micron shares fall on memory outlook",
+             "link": "https://news.google.com/rss/articles/session",
+             "source": "News", "published": "10-17 05:30 KST",
+             "session_date": "2026-10-16"}]
+        get.return_value = Mock(content=b"<rss><channel></channel></rss>")
+        items, _ = fetch_news(limit=6, market={"SOX": {"date": "2026-10-16"}})
+        self.assertTrue(any(x.get("session_date") == "2026-10-16" for x in items))
+        self.assertEqual(len(items), 6)
 
     def test_no_causality_claim(self):
         item = {"title": "Micron stock falls amid demand concerns"}
