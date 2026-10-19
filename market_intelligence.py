@@ -189,6 +189,58 @@ def rank_market_news(items, market=None, limit=6):
     return ranked[:limit]
 
 
+def fetch_session_market_news(market, limit=12):
+    """Search news around the US close date, not the report's current 24h window.
+
+    UTC noon on session date through UTC noon the following day covers the
+    US trading session and immediate post-close coverage. Headlines alone
+    remain unverified; publication timing is not evidence of causality.
+    """
+    from datetime import date
+    dates = [market.get(k, {}).get("date") for k in ("SOX", "NASDAQ", "Micron")]
+    valid = []
+    for raw in dates:
+        try:
+            if raw:
+                valid.append(date.fromisoformat(raw))
+        except (TypeError, ValueError):
+            continue
+    if not valid:
+        print("NEWS_MARKET_SESSION=unavailable")
+        return []
+    session = max(valid)
+    start = datetime.combine(session, datetime.min.time(), tzinfo=timezone.utc) + timedelta(hours=12)
+    end = start + timedelta(days=1)
+    query = (MARKET_MOVE_QUERY + " after:" + session.isoformat()
+             + " before:" + (session + timedelta(days=2)).isoformat())
+    url = ("https://news.google.com/rss/search?q=" + quote(query)
+           + "&hl=en-US&gl=US&ceid=US:en")
+    print("NEWS_MARKET_SESSION=" + session.isoformat())
+    try:
+        response = requests.get(url, timeout=18, headers={"User-Agent": "Mozilla/5.0"})
+        response.raise_for_status()
+        root = ElementTree.fromstring(response.content)
+        results = []
+        for entry in root.findall("./channel/item"):
+            title = (entry.findtext("title") or "").strip()
+            link = (entry.findtext("link") or "").strip()
+            try:
+                published = parsedate_to_datetime(entry.findtext("pubDate") or "").astimezone(timezone.utc)
+            except (ValueError, TypeError, OverflowError):
+                continue
+            if not title or not link.startswith("https://") or not start <= published < end:
+                continue
+            results.append({"title": title, "link": link,
+                            "source": entry.findtext("source") or "Google News RSS",
+                            "published": published.astimezone(KST).strftime("%m-%d %H:%M KST"),
+                            "session_date": session.isoformat()})
+        print("NEWS_MARKET_SESSION_FOUND=" + str(len(results)))
+        return rank_market_news(results, market, limit)
+    except (requests.RequestException, ElementTree.ParseError) as exc:
+        print("NEWS_MARKET_SESSION_ERROR=" + type(exc).__name__)
+        return []
+
+
 def fetch_news(hours=24, limit=6, market=None):
     """Combine publisher RSS and GDELT; supplement with Google News when sparse."""
     publisher = fetch_publisher_rss(hours=hours, limit=max(limit * 3, 12))
@@ -208,6 +260,8 @@ def fetch_news(hours=24, limit=6, market=None):
 
     add(publisher, "semiconductor")
     add(direct, "semiconductor")
+    session_news = fetch_session_market_news(market or {}, limit=max(limit * 2, 8)) if market else []
+    add(session_news, "market_session")
     print("NEWS_SOURCES=publisher:" + str(len(publisher)) + ",gdelt:" + str(len(direct)))
     if len(combined) < limit:
         url = ("https://news.google.com/rss/search?q="
@@ -238,7 +292,7 @@ def fetch_news(hours=24, limit=6, market=None):
             print("NEWS_GOOGLE_FALLBACK_ERROR=" + type(exc).__name__)
     # Google News landing URLs are not verified publisher bodies. Never label them direct.
     # Reserve candidate space for market-move headlines when direct evidence is sparse.
-    if len(combined) < limit + 2:
+    if not session_news and len(combined) < limit + 2:
         try:
             focused_url = ("https://news.google.com/rss/search?q="
                            + quote(MARKET_MOVE_QUERY + " when:1d")
@@ -274,7 +328,16 @@ def fetch_news(hours=24, limit=6, market=None):
                     if item.get("link", "").startswith("https://news.google.com/")]
     prioritized = (rank_market_news(direct_links, market, limit)
                    + rank_market_news(google_links, market, limit))
-    selected = prioritized[:limit]
+    if session_news:
+        # Preserve space for session-day market reporting even when recent
+        # industry headlines are more numerous; direct links still lead.
+        session_titles = {" ".join(n["title"].lower().split()) for n in session_news}
+        market_candidates = [n for n in prioritized if " ".join(n["title"].lower().split()) in session_titles]
+        other_candidates = [n for n in prioritized if " ".join(n["title"].lower().split()) not in session_titles]
+        selected = (market_candidates[:min(2, limit)] + other_candidates)[:limit]
+    else:
+        selected = prioritized[:limit]
+    print("NEWS_SELECTED_MARKET_SESSION=" + str(sum(bool(n.get("session_date")) for n in selected)))
     print("NEWS_SELECTED_DIRECT=" + str(sum(
         not item.get("link", "").startswith("https://news.google.com/")
         for item in selected)))
