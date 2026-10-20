@@ -104,15 +104,19 @@ def summarize(html, report_path):
         telegram += "\n\n[원문 표 발췌]\n" + "\n".join(table)
     if source_links:
         telegram += "\n\n[출처]\n" + "\n".join(source_links)
-    telegram += "\n\n📧 상세 보고서: Gmail에서 [HTML 원본 전달 테스트] 검색"
+    telegram += "\n\n📧 상세 보고서: Gmail에서 " + gmail_search_label(report_path) + " 검색"
     if len(telegram) > 3900:
         telegram = telegram[:3850].rsplit("\n", 1)[0] + "\n…(상세 내용은 Gmail 참조)"
 
-    # Kakao text template: at most 180 characters; clear pointer to the full report.
+    # Kakao: select a complete source sentence, never a partial excerpt.
     main = next((val for tag, val in paragraphs if tag == "p" and ("사실" in val or "핵심" in val)), "")
-    kakao = title[:48] + "\n" + main[:75] + "\n상세: Gmail에서 [HTML 원본 전달 테스트] 검색"
+    footer = "상세: Gmail에서 " + gmail_search_label(report_path) + " 검색"
+    headline = title[:48]
+    remaining = 180 - len(headline) - len(footer) - 2
+    fact = complete_sentence(main, min(110, remaining))
+    kakao = headline + "\n" + (fact + "\n" if fact else "") + footer
     if len(kakao) > 180:
-        kakao = kakao[:180]
+        raise ValueError("Kakao message exceeds 180 characters")
     return telegram, kakao
 
 
