@@ -70,7 +70,8 @@ def main():
     msg = EmailMessage()
     msg["From"] = address
     msg["To"] = address
-    msg["Subject"] = f"[HTML 원본 전달 테스트] {Path(args.report).stem}"
+    label = "[반도체 브리핑]" if Path(args.report).name.startswith("chatgpt_scheduled_briefing_") else "[HTML 원본 전달 테스트]"
+    msg["Subject"] = f"{label} {Path(args.report).stem}"
     msg.set_content(text)
     # Original HTML, not escaped or converted from Markdown.
     msg.add_alternative(html, subtype="html")
