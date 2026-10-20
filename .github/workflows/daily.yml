@@ -4,7 +4,6 @@ on:
   schedule:
     - cron: '0 23 * * 0-4'  # 08:00 KST Mon-Fri
     - cron: '30 7 * * 1-5'  # 16:30 KST Mon-Fri
-    - cron: '30 11 * * 1-5' # 20:30 KST Mon-Fri
   workflow_dispatch:
     inputs:
       report_mode:
@@ -71,8 +70,6 @@ jobs:
             mode='morning'
           elif [ "$SCHEDULE" = '30 7 * * 1-5' ]; then
             mode='afternoon'
-          elif [ "$SCHEDULE" = '30 11 * * 1-5' ]; then
-            mode='night'
           else
             echo 'Unknown schedule' >&2
             exit 1
