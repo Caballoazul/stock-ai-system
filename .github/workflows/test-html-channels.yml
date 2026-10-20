@@ -1,0 +1,35 @@
+name: Test HTML Telegram Kakao Summaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      report_path:
+        description: 'Existing HTML report under tests/'
+        required: true
+        type: string
+        default: 'tests/chatgpt_scheduled_html_delivery_20261020.html'
+
+permissions:
+  contents: read
+
+jobs:
+  summary-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate report and build summaries without sending
+        env:
+          REPORT_PATH: ${{ inputs.report_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python send_saved_html.py --report "$REPORT_PATH"
+          python send_saved_html_channels.py --report "$REPORT_PATH"
+      - name: Confirm dry-run completed
+        run: echo 'CHANNEL_TEST_COMPLETE no Gmail Telegram Kakao sent'
