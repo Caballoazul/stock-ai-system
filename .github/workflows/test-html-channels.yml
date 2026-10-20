@@ -30,6 +30,6 @@ jobs:
         run: |
           set -euo pipefail
           python send_saved_html.py --report "$REPORT_PATH"
-          python send_saved_html_channels.py --report "$REPORT_PATH"
+          python send_saved_html_channels.py --report "$REPORT_PATH" --preview
       - name: Confirm dry-run completed
         run: echo 'CHANNEL_TEST_COMPLETE no Gmail Telegram Kakao sent'
