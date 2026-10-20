@@ -1,0 +1,44 @@
+name: Test Saved HTML to Gmail
+
+on:
+  workflow_dispatch:
+    inputs:
+      report_path:
+        description: 'HTML report path under tests/'
+        required: true
+        default: 'tests/chatgpt_scheduled_html_delivery_20261020.html'
+        type: string
+      send_email:
+        description: 'Actually send to configured Gmail? (default: no)'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+
+permissions:
+  contents: read
+
+jobs:
+  html-email-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate HTML without sending
+        env:
+          REPORT_PATH: ${{ inputs.report_path }}
+        run: python send_saved_html.py --report "$REPORT_PATH"
+      - name: Send original HTML via Gmail SMTP
+        if: ${{ inputs.send_email == 'yes' }}
+        env:
+          REPORT_PATH: ${{ inputs.report_path }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_saved_html.py --report "$REPORT_PATH" --send
