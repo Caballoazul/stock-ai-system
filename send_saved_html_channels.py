@@ -102,12 +102,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", required=True)
     ap.add_argument("--send", action="store_true")
+    ap.add_argument("--preview", action="store_true", help="Print summaries for review")
     args = ap.parse_args()
     html, _, _ = load_report(args.report)
     telegram, kakao = summarize(html, args.report)
     if not telegram.strip() or not kakao.strip():
         raise ValueError("Empty channel summary")
     print(f"CHANNEL_SUMMARY_VALIDATED telegram_chars={len(telegram)} kakao_chars={len(kakao)}")
+    if args.preview:
+        print("=== TELEGRAM_PREVIEW_BEGIN ===")
+        print(telegram)
+        print("=== TELEGRAM_PREVIEW_END ===")
+        print("=== KAKAO_PREVIEW_BEGIN ===")
+        print(kakao)
+        print("=== KAKAO_PREVIEW_END ===")
     if not args.send:
         print("CHANNEL_DRY_RUN_OK: no Telegram/Kakao messages sent")
         return
