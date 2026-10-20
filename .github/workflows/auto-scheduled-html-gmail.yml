@@ -1,0 +1,57 @@
+name: Auto Validate Scheduled HTML Briefing
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'tests/chatgpt_scheduled_html_*.html'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-html-auto-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate-and-optional-send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Process only newly added HTML reports
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          SEND_ENABLED: ${{ vars.SCHEDULED_HTML_AUTOSEND_ENABLED }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r file; do
+            case "$file" in
+              tests/chatgpt_scheduled_html_*.html)
+                echo "Validating newly added report: $file"
+                python send_saved_html.py --report "$file"
+                if [[ "$SEND_ENABLED" == "true" ]]; then
+                  python send_saved_html.py --report "$file" --send
+                else
+                  echo "AUTOSEND_DISABLED: no email sent"
+                fi
+                count=$((count + 1))
+                ;;
+            esac
+          done < <(git diff --name-only --diff-filter=A "$BEFORE_SHA" "$GITHUB_SHA")
+          echo "NEW_REPORTS_VALIDATED=$count"
+          if [[ "$count" -eq 0 ]]; then
+            echo "NO_NEW_HTML_REPORT: nothing to send"
+          fi
