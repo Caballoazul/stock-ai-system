@@ -1,0 +1,55 @@
+name: PER Gmail Isolated Test (Manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  per-gmail-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install yfinance
+      - name: Collect current PER and send Gmail only
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from valuation_collector import collect_valuations
+          from per_comparison import render_per_comparison
+          from gmail_sender import send_gmail_report
+
+          values = collect_valuations()
+          for name, item in values.items():
+              print(f"PER_COLLECTION {name}: {item['status']} at {item['collected_at_kst']}")
+          if not any(item.get('trailing_pe') or item.get('forward_pe') for item in values.values()):
+              raise RuntimeError("No PER values collected; email not sent")
+          now = datetime.now(ZoneInfo('Asia/Seoul'))
+          body = (
+              "[GitHub 1단계: PER Gmail 단독 실측 테스트]\n"
+              f"수집/작성: {now:%Y-%m-%d %H:%M} KST\n"
+              "기존 뉴스 본문 미포함. PER 수집과 Gmail SMTP만 검증합니다.\n\n"
+              + render_per_comparison(values)
+              + "\n\n상세 수집 메타데이터:\n"
+              + "\n".join(
+                  f"{name}: {v['ticker']} / {v['status']} / "
+                  f"{v['collected_at_kst']} / period_verified={v['period_verified']}"
+                  for name, v in values.items()
+              )
+          )
+          subject = f"[GitHub PER 단독 실측 테스트][{now:%Y%m%d-%H%M%S}]"
+          send_gmail_report(subject, body)
+          print("GMAIL_PER_TEST_SENT")
+          PY
