@@ -54,6 +54,7 @@ def main():
     print("NEWS_AI_TITLE_TRANSLATED=" + str(sum(bool(item.get("analysis")) and "제목 번역만" in item.get("verification", "") for item in news)))
     title, detailed, telegram_text = compose(mode, market, news, news_error)
     # Valuation is informational only; collection failures must not block delivery.
+    valuations = {}
     try:
         valuations = collect_valuations()
         per_section = render_per_comparison(valuations)
@@ -97,8 +98,20 @@ def main():
             return "미확인"
         return f"{d['price']:,.0f}원"
 
-    kakao_text = (f"[{title}] 삼성 {fmt('Samsung')} / SK {fmt('SK Hynix')}")
-    kakao_text += ("\n텔레그램: " + telegram_link) if telegram_link else "\n텔레그램 원문 링크: 생성 불가"
+    # Kakao is a concise notification. Its default-template detail button
+    # is not a verified report link; direct readers to Gmail instead.
+    def per_short(name, field):
+        value = valuations.get(name, {}).get(field)
+        return f"{value:.2f}" if isinstance(value, (int, float)) and value > 0 else "미확인"
+
+    kakao_text = (
+        f"[{mode} 반도체] 삼성 {fmt('Samsung')} / SK {fmt('SK Hynix')}\n"
+        f"PER(T/F, 배) MU {per_short('Micron', 'trailing_pe')}/{per_short('Micron', 'forward_pe')}"
+        f" 삼성 {per_short('Samsung', 'trailing_pe')}/{per_short('Samsung', 'forward_pe')}"
+        f" SK {per_short('SK Hynix', 'trailing_pe')}/{per_short('SK Hynix', 'forward_pe')}\n"
+        "상세: Gmail에서 [반도체보고서] 검색\n"
+        "※ 자세히 보기 버튼 사용 불가"
+    )
     if len(kakao_text) > 180:
         raise ValueError("Kakao summary exceeds 180 characters")
     send_kakao_messages([kakao_text])
