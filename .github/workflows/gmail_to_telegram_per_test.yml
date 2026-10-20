@@ -1,0 +1,107 @@
+name: Gmail to Telegram PER Test (Manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gmail-to-telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Telegram dependency
+        run: pip install requests
+      - name: Read latest PER Gmail and summarize to Telegram
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PY'
+          import email
+          import imaplib
+          import re
+          from datetime import datetime, timedelta, timezone
+          from email import policy
+          from email.header import decode_header, make_header
+          from email.utils import parsedate_to_datetime
+          from telegram_sender import send_telegram_message
+
+          address = __import__('os').environ['GMAIL_ADDRESS'].strip()
+          password = __import__('os').environ['GMAIL_APP_PASSWORD'].replace(' ', '')
+          cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+          client = imaplib.IMAP4_SSL('imap.gmail.com', 993, timeout=30)
+          try:
+              client.login(address, password)
+              status, _ = client.select('INBOX', readonly=True)
+              if status != 'OK':
+                  raise RuntimeError('Inbox unavailable')
+              status, data = client.uid('search', None, 'SINCE', cutoff.strftime('%d-%b-%Y'))
+              if status != 'OK':
+                  raise RuntimeError('Gmail search failed')
+              selected = None
+              for uid in reversed((data[0] or b'').split()[-300:]):
+                  status, items = client.uid('fetch', uid, '(BODY.PEEK[])')
+                  if status != 'OK':
+                      continue
+                  raw = next((x[1] for x in items if isinstance(x, tuple) and isinstance(x[1], bytes)), None)
+                  if not raw:
+                      continue
+                  msg = email.message_from_bytes(raw, policy=policy.default)
+                  subject = str(make_header(decode_header(msg.get('Subject', ''))))
+                  if not subject.startswith('[GitHub PER 단독 실측 테스트]'):
+                      continue
+                  sender = email.utils.parseaddr(msg.get('From', ''))[1].lower()
+                  if sender != address.lower():
+                      continue
+                  try:
+                      date = parsedate_to_datetime(msg['Date']).astimezone(timezone.utc)
+                  except (TypeError, ValueError):
+                      continue
+                  if date < cutoff or date > datetime.now(timezone.utc) + timedelta(minutes=2):
+                      continue
+                  body_part = msg.get_body(preferencelist=('plain',))
+                  body = body_part.get_content() if body_part else ''
+                  if '[3사 PER 비교' not in body:
+                      continue
+                  if selected is None or date > selected[0]:
+                      selected = (date, subject, body)
+              if selected is None:
+                  raise RuntimeError('Recent matching PER email not found')
+          finally:
+              client.logout()
+
+          received_at, subject, body = selected
+          expected = ['마이크론', '삼성전자', 'SK하이닉스']
+          lines = []
+          for name in expected:
+              matching = [line.strip() for line in body.splitlines() if line.strip().startswith(name + ' |')]
+              if len(matching) != 1:
+                  raise RuntimeError('PER row missing or duplicated: ' + name)
+              fields = [x.strip() for x in matching[0].split('|')]
+              if len(fields) != 4:
+                  raise RuntimeError('Invalid PER row: ' + name)
+              lines.append(f"{name}: Trailing {fields[1]} / Forward {fields[2]} ({fields[3]})")
+          stamp = re.search(r'수집/작성:\s*([^\n]+)', body)
+          if not stamp:
+              raise RuntimeError('Collection timestamp missing')
+          message = (
+              "📊 [2단계 테스트] Gmail → Telegram PER 요약\n"
+              f"원본: {subject}\n"
+              f"수집시각: {stamp.group(1).strip()}\n\n"
+              + "\n".join(lines)
+              + "\n\n출처: Yahoo Finance / yfinance (Gmail 원본)\n"
+              "주의: EPS 기간 미검증, 직접적인 저평가 판단 금지."
+          )
+          result = send_telegram_message(message)
+          if not result.get('ok'):
+              raise RuntimeError('Telegram API returned non-OK')
+          print('GMAIL_TO_TELEGRAM_PER_TEST_OK')
+          print('SOURCE_SUBJECT=' + subject)
+          print('TELEGRAM_MESSAGE_ID=' + str(result.get('result', {}).get('message_id')))
+          PY
