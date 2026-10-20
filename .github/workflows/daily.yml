@@ -14,7 +14,6 @@ on:
         options:
           - morning
           - afternoon
-          - night
 
 permissions:
   contents: read
