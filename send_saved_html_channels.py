@@ -62,6 +62,24 @@ class Extractor(HTMLParser):
             self.row = None
 
 
+def gmail_search_label(report_path):
+    if Path(report_path).name.startswith("chatgpt_scheduled_briefing_"):
+        return "[반도체 브리핑]"
+    return "[HTML 원본 전달 테스트]"
+
+
+def complete_sentence(text, max_length):
+    """Return only a complete sentence, never a mid-word truncation."""
+    if not text or max_length <= 0:
+        return ""
+    if len(text) <= max_length:
+        return text
+    matches = list(re.finditer(r"[.!?。](?=\\s|$)", text[:max_length + 1]))
+    if matches:
+        return text[:matches[-1].end()].strip()
+    return ""
+
+
 def summarize(html, report_path):
     parser = Extractor()
     parser.feed(html)
