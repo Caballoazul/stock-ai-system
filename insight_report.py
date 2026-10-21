@@ -13,7 +13,7 @@ def line(name, market):
         return f"• {LABELS[name]}: 조회 불가 (가격·기준일 검증 필요)"
     unit = "원" if name in ("Samsung", "SK Hynix") else ("pt" if name in ("NASDAQ", "SOX") else "USD")
     price = f"{d['price']:,.0f}" if unit == "원" else f"{d['price']:,.2f}"
-    return f"• {LABELS[name]}: {price} {unit} ({d['change']:+.2f}%) / {d['date']} 종가"
+    return f"• {LABELS[name]}: {price} {unit} ({d['change']:+.2f}%) / {d['date']} Yahoo 일별 종가 데이터 (확정 여부 미검증)"
 
 
 def complete_sentence(value, max_chars=180):
@@ -166,7 +166,7 @@ def compose(mode, market, news, news_error):
              "• 미국장 하락 원인 미확인: 확보한 기사로는 당일 하락 이유를 입증할 수 없습니다.")
     compare = "• 미국과 한국 시장의 거래일이 다르므로 종가·등락률을 구분해 비교해야 합니다."
     if mu is not None and sox is not None:
-        compare += "\\n• " + clues[0]
+        compare += "\n• " + clues[0]
 
     telegram_news = []
     for item in verified_news[:2]:
