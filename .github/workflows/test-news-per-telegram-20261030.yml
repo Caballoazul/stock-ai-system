@@ -15,7 +15,8 @@ concurrency:
 
 jobs:
   test-send:
-    if: github.event.head_commit.message == 'test: send 20261030 PM news PER Telegram once' && github.run_attempt == 1
+    if: >-
+      github.event.head_commit.message == 'test: send 20261030 PM news PER Telegram once' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
