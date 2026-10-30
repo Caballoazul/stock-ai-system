@@ -1,0 +1,49 @@
+name: One-time News PER Telegram Test 20261030
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-news-per-telegram-20261030.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-time-news-per-telegram-20261030
+  cancel-in-progress: false
+
+jobs:
+  test-send:
+    if: github.event.head_commit.message == 'test: send 20261030 PM news PER Telegram once' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated collector dependencies
+        run: python -m pip install yfinance==1.7.0 requests
+      - name: Verify formatting and single-send behavior
+        working-directory: experiments/news_per_telegram
+        run: python -m unittest -v test_send_telegram_once.py
+      - name: Send one authorized Telegram test
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+        run: |
+          python experiments/news_per_telegram/send_telegram_once.py \
+            --report tests/chatgpt_scheduled_briefing_pm_20261030.html \
+            --message-id 1a18b94271c529bb \
+            --output test-results/news-per-telegram-20261030 \
+            --send-once
+      - name: Preserve preview PER values and send receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-per-telegram-20261030
+          path: test-results/news-per-telegram-20261030
+          if-no-files-found: warn
+          retention-days: 14
