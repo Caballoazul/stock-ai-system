@@ -32,7 +32,8 @@ class Sections(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if self.active is not None:
-            self.depth += 1
+            if tag not in ("br", "hr", "img", "meta", "input", "wbr", "source"):
+                self.depth += 1
         elif tag in ("h1", "h2", "h3", "p"):
             self.active, self.depth, self.buf = tag, 0, []
 
@@ -64,9 +65,6 @@ class Sections(HTMLParser):
             self.sections.setdefault(self.section, []).append(value)
         else:
             self.intro.append(value)
-
-    def section(self, marker):
-        return next((v for k, v in self.sections.items() if marker in k), [])
 
 
 def section_values(parsed, marker):
