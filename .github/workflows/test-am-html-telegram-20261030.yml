@@ -1,0 +1,46 @@
+name: One-time AM HTML to Telegram 20261030
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-am-html-telegram-20261030.yml'
+permissions:
+  contents: read
+concurrency:
+  group: one-time-am-html-telegram-20261030
+  cancel-in-progress: false
+jobs:
+  send-am:
+    if: github.event.head_commit.message == 'test: send 20261030 AM HTML Telegram exactly once' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install bounded PER collector and Telegram dependencies
+        run: python -m pip install yfinance==1.7.0 requests
+      - name: Validate AM summary without sending
+        run: |
+          python - <<'PY'
+          from send_scheduled_telegram_per import build_message
+          rows = [
+              dict(company="마이크론", trailing_pe=12.57, forward_pe=4.50, collected_at_kst="TEST"),
+              dict(company="삼성전자", trailing_pe=None, forward_pe=3.11, collected_at_kst="TEST"),
+              dict(company="SK하이닉스", trailing_pe=None, forward_pe=2.69, collected_at_kst="TEST"),
+          ]
+          message = build_message("tests/chatgpt_scheduled_briefing_am_20261030.html", rows, "test@example.com")
+          assert "Gmail 원문 보고서 열기" in message
+          assert "미국장" in message and "PER 비교" in message
+          print("AM_FORMAT_VALIDATED chars=" + str(len(message)))
+          PY
+      - name: Send existing 07:20 AM HTML summary to Telegram once
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+        run: |
+          python send_scheduled_telegram_per.py \
+            --report tests/chatgpt_scheduled_briefing_am_20261030.html \
+            --send
