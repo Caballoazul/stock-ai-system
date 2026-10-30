@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install Telegram dependency
-        run: python -m pip install requests yfinance
+        run: python -m pip install requests yfinance==1.7.0
       - name: Process only newly added HTML reports
         env:
           BEFORE_SHA: ${{ github.event.before }}
@@ -53,15 +53,18 @@ jobs:
                 echo "Validating newly added report: $file"
                 python send_saved_html.py --report "$file"
                 python send_saved_html_channels.py --report "$file"
-                if [[ "$SEND_ENABLED" == "true" ]]; then
+                if [[ "$SEND_ENABLED" == "true" && "$GITHUB_RUN_ATTEMPT" == "1" ]]; then
                   python send_saved_html.py --report "$file" --send
+                  case "$file" in
+                    tests/chatgpt_scheduled_briefing_am_*.html|tests/chatgpt_scheduled_briefing_pm_*.html)
+                      python send_scheduled_telegram_per.py --report "$file" --send
+                      ;;
+                    *)
+                      echo "TELEGRAM_SKIPPED: non-AM/PM test HTML"
+                      ;;
+                  esac
                 else
-                  echo "AUTOSEND_DISABLED: no Gmail sent"
-                fi
-                if [[ "$SEND_ENABLED" == "true" ]]; then
-                  python send_scheduled_telegram_per.py --report "$file" --send
-                else
-                  echo "TELEGRAM_NOT_SENT: Gmail autosend disabled"
+                  echo "AUTOSEND_DISABLED_OR_RERUN: Gmail and Telegram not sent"
                 fi
                 echo "LEGACY_CHANNEL_AUTOSEND_SKIPPED: avoid duplicate Telegram/Kakao"
                 count=$((count + 1))
