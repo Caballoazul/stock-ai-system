@@ -1,0 +1,35 @@
+name: Validate Scheduled AM PM Telegram Preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-scheduled-am-pm-preview.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test AM and PM summaries without external calls or messages
+        run: |
+          python - <<'PY'
+          import send_scheduled_telegram_per as m
+          rows = [
+              dict(company="마이크론", trailing_pe=12.57, forward_pe=4.50, collected_at_kst="TEST"),
+              dict(company="삼성전자", trailing_pe=None, forward_pe=3.11, collected_at_kst="TEST"),
+              dict(company="SK하이닉스", trailing_pe=None, forward_pe=2.69, collected_at_kst="TEST"),
+          ]
+          for period in ("am", "pm"):
+              path = f"tests/chatgpt_scheduled_briefing_{period}_20261030.html"
+              msg = m.build_message(path, rows, "test@example.com")
+              assert "Gmail 원문 보고서 열기" in msg
+              assert "마이크론" in msg and "삼성전자" in msg and "SK하이닉스" in msg
+              assert "핵심 뉴스" in msg and "PER 비교" in msg
+              assert len(msg) < 3900
+              print(f"{period.upper()}_PREVIEW_OK chars={len(msg)}")
+          PY
